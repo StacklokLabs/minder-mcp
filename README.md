@@ -42,9 +42,6 @@ The server supports two authentication methods (in priority order):
 
 ## Available Tools
 
-### Health
-- `minder_check_health` - Check Minder server health status
-
 ### Projects
 - `minder_list_projects` - List all projects accessible to the current user
 - `minder_list_child_projects` - List child projects of a given project

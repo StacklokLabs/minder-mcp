@@ -23,13 +23,6 @@ func New(cfg *config.Config) *Tools {
 
 // Register registers all MCP tools with the server.
 func (t *Tools) Register(s *server.MCPServer) {
-	// Health
-	s.AddTool(mcp.NewTool("minder_check_health",
-		mcp.WithDescription("Check Minder server health and connectivity. Returns server status and version information."),
-		mcp.WithTitleAnnotation("Check Health"),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), t.checkHealth)
-
 	// Projects
 	s.AddTool(mcp.NewTool("minder_list_projects",
 		mcp.WithDescription("List all projects accessible to the current user. Returns project IDs, names, and metadata."),
