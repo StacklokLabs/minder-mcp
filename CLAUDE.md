@@ -19,36 +19,6 @@ MCP server exposing Minder's read-only operations via streaming HTTP transport. 
 - `internal/middleware/` - Auth token handling
 - `internal/tools/` - MCP tool implementations
 
-## Code Patterns
-
-### Parameter Extraction
-
-Tools use `req.GetString()` and `req.GetInt()` for parameter extraction with default values:
-
-```go
-projectID := req.GetString("project_id", "")
-limit := req.GetInt("limit", 20)
-```
-
-### Error Handling
-
-Errors use `mcp.NewToolResultError()` with `MapGRPCError()` for gRPC errors:
-
-```go
-if err != nil {
-    return mcp.NewToolResultError(MapGRPCError(err)), nil
-}
-```
-
-### Responses
-
-All responses are JSON via `mcp.NewToolResultText()`:
-
-```go
-data, err := json.MarshalIndent(resp, "", "  ")
-return mcp.NewToolResultText(string(data)), nil
-```
-
 ## MCP Tool Conventions
 
 - Names: `minder_<action>_<resource>` (snake_case)
