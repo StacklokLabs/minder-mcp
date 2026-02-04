@@ -41,7 +41,9 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	projectID := req.GetString("project_id", "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(profileID, name, "profile_id", "name", projectID, "project_id"); errMsg != "" {
+	if errMsg := ValidateLookupParams(profileID, name, "profile_id", "name", map[string]string{
+		"project_id": projectID,
+	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
 

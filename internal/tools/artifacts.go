@@ -39,10 +39,14 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	artifactID := req.GetString("artifact_id", "")
 	name := req.GetString("name", "")
+	projectID := req.GetString("project_id", "")
 	provider := req.GetString("provider", "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", "name", provider, "provider"); errMsg != "" {
+	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", "name", map[string]string{
+		"project_id": projectID,
+		"provider":   provider,
+	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
 
@@ -68,9 +72,13 @@ func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		reqProto := &minderv1.GetArtifactByNameRequest{
 			Name: name,
 		}
-		if provider != "" {
-			reqProto.Context = &minderv1.Context{
-				Provider: &provider,
+		if projectID != "" || provider != "" {
+			reqProto.Context = &minderv1.Context{}
+			if projectID != "" {
+				reqProto.Context.Project = &projectID
+			}
+			if provider != "" {
+				reqProto.Context.Provider = &provider
 			}
 		}
 		resp, err := client.Artifacts().GetArtifactByName(ctx, reqProto)

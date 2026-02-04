@@ -61,10 +61,14 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 	repoID := req.GetString("repository_id", "")
 	owner := req.GetString("owner", "")
 	name := req.GetString("name", "")
+	projectID := req.GetString("project_id", "")
 	provider := req.GetString("provider", "")
 
 	// Validate parameters
-	if errMsg := ValidateRepositoryLookupParams(repoID, owner, name, provider); errMsg != "" {
+	if errMsg := ValidateRepositoryLookupParams(repoID, owner, name, map[string]string{
+		"project_id": projectID,
+		"provider":   provider,
+	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
 
@@ -91,9 +95,13 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 		reqProto := &minderv1.GetRepositoryByNameRequest{
 			Name: fullName,
 		}
-		if provider != "" {
-			reqProto.Context = &minderv1.Context{
-				Provider: &provider,
+		if projectID != "" || provider != "" {
+			reqProto.Context = &minderv1.Context{}
+			if projectID != "" {
+				reqProto.Context.Project = &projectID
+			}
+			if provider != "" {
+				reqProto.Context.Provider = &provider
 			}
 		}
 		resp, err := client.Repositories().GetRepositoryByName(ctx, reqProto)
