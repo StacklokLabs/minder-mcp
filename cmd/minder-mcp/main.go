@@ -20,6 +20,10 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Setup logging
 	logger := logging.Setup(cfg.LogLevel)

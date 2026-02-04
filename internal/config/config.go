@@ -2,6 +2,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strconv"
 )
@@ -46,7 +47,7 @@ func LoadWithReader(getEnv EnvReader) *Config {
 		LogLevel: getEnvDefault(getEnv, "LOG_LEVEL", "info"),
 		Minder: MinderConfig{
 			AuthToken: getEnvDefault(getEnv, "MINDER_AUTH_TOKEN", ""),
-			Host:      getEnvDefault(getEnv, "MINDER_SERVER_HOST", "api.stacklok.com"),
+			Host:      getEnvDefault(getEnv, "MINDER_SERVER_HOST", ""),
 			Port:      getEnvInt(getEnv, "MINDER_SERVER_PORT", 443),
 			Insecure:  getEnvBool(getEnv, "MINDER_INSECURE", false),
 		},
@@ -55,6 +56,14 @@ func LoadWithReader(getEnv EnvReader) *Config {
 			EndpointPath: getEnvDefault(getEnv, "MCP_ENDPOINT_PATH", "/mcp"),
 		},
 	}
+}
+
+// Validate checks that required configuration values are set.
+func (c *Config) Validate() error {
+	if c.Minder.Host == "" {
+		return errors.New("MINDER_SERVER_HOST is required")
+	}
+	return nil
 }
 
 func getEnvDefault(getEnv EnvReader, key, defaultValue string) string {

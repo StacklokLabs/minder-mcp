@@ -22,8 +22,8 @@ func TestLoadWithReader_Defaults(t *testing.T) {
 	if cfg.Minder.AuthToken != "" {
 		t.Errorf("AuthToken = %q, want empty", cfg.Minder.AuthToken)
 	}
-	if cfg.Minder.Host != "api.stacklok.com" {
-		t.Errorf("Host = %q, want %q", cfg.Minder.Host, "api.stacklok.com")
+	if cfg.Minder.Host != "" {
+		t.Errorf("Host = %q, want empty", cfg.Minder.Host)
 	}
 	if cfg.Minder.Port != 443 {
 		t.Errorf("Port = %d, want %d", cfg.Minder.Port, 443)
@@ -253,6 +253,45 @@ func TestGetEnvBool(t *testing.T) {
 			got := getEnvBool(mockEnvReader(tt.env), tt.key, tt.defaultValue)
 			if got != tt.want {
 				t.Errorf("getEnvBool() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConfig_Validate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		cfg     *Config
+		wantErr bool
+	}{
+		{
+			name: "valid config with host",
+			cfg: &Config{
+				Minder: MinderConfig{
+					Host: "api.example.com",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid config without host",
+			cfg: &Config{
+				Minder: MinderConfig{
+					Host: "",
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := tt.cfg.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

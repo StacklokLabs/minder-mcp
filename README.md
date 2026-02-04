@@ -27,7 +27,7 @@ The server is configured via environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `MINDER_AUTH_TOKEN` | Static auth token (fallback) | - |
-| `MINDER_SERVER_HOST` | Minder GRPC host | `api.stacklok.com` |
+| `MINDER_SERVER_HOST` | Minder GRPC host (required) | `` |
 | `MINDER_SERVER_PORT` | Minder GRPC port | `443` |
 | `MINDER_INSECURE` | Allow insecure connections | `false` |
 | `MCP_PORT` | MCP HTTP server port | `8080` |
