@@ -1,0 +1,72 @@
+version: '3'
+
+vars:
+  BINARY_NAME: minder-mcp
+  BUILD_DIR: bin
+
+tasks:
+  default:
+    desc: Build the project
+    cmds:
+      - task: build
+
+  build:
+    desc: Build the minder-mcp binary
+    cmds:
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd/minder-mcp
+    sources:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.BUILD_DIR}}/{{.BINARY_NAME}}'
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v -race ./...
+
+  test:coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test -v -race -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  lint:fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - golangci-lint run --fix ./...
+
+  fmt:
+    desc: Format code
+    cmds:
+      - gofmt -s -w .
+      - gci write --skip-generated -s standard -s default -s "prefix(github.com/stacklok/minder-mcp)" .
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.out coverage.html
+
+  tidy:
+    desc: Run go mod tidy
+    cmds:
+      - go mod tidy
+
+  run:
+    desc: Run the MCP server
+    cmds:
+      - go run ./cmd/minder-mcp
+
+  all:
+    desc: Run lint, test, and build
+    cmds:
+      - task: lint
+      - task: test
+      - task: build
