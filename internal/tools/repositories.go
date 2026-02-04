@@ -70,7 +70,7 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 	provider := req.GetString("provider", "")
 
 	// Validate parameters
-	if errMsg := ValidateRepositoryLookupParams(repoID, owner, name); errMsg != "" {
+	if errMsg := ValidateRepositoryLookupParams(repoID, owner, name, provider); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
 

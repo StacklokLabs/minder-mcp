@@ -65,25 +65,24 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	s.AddTool(mcp.NewTool("minder_get_repository",
 		mcp.WithDescription("Get a repository by ID or owner/name. "+
-			"Use repository_id for UUID lookup, or provide both owner and name for name lookup. "+
-			"Do not provide both methods."),
+			"Use repository_id for UUID lookup, or provide both owner and name for name lookup."),
 		mcp.WithTitleAnnotation("Get Repository"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("repository_id",
 			mcp.Title("Repository ID"),
-			mcp.Description("UUID of the repository"),
+			mcp.Description("UUID of the repository. Mutually exclusive with owner/name"),
 		),
 		mcp.WithString("owner",
 			mcp.Title("Owner"),
-			mcp.Description("Repository owner or organization name"),
+			mcp.Description("Repository owner or organization. Required with name for name lookup"),
 		),
 		mcp.WithString("name",
 			mcp.Title("Name"),
-			mcp.Description("Repository name without owner prefix"),
+			mcp.Description("Repository name without owner prefix. Required with owner for name lookup"),
 		),
 		mcp.WithString("provider",
 			mcp.Title("Provider"),
-			mcp.Description("Provider name filter for name lookup"),
+			mcp.Description("Provider filter. Only valid with owner/name lookup"),
 		),
 	), t.getRepository)
 
@@ -105,21 +104,20 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	s.AddTool(mcp.NewTool("minder_get_profile",
 		mcp.WithDescription("Get a security profile by ID or name. "+
-			"Use profile_id for UUID lookup, or name for name lookup. "+
-			"Do not provide both."),
+			"Use profile_id for UUID lookup, or name for name lookup."),
 		mcp.WithTitleAnnotation("Get Profile"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("profile_id",
 			mcp.Title("Profile ID"),
-			mcp.Description("UUID of the profile"),
+			mcp.Description("UUID of the profile. Mutually exclusive with name"),
 		),
 		mcp.WithString("name",
 			mcp.Title("Profile Name"),
-			mcp.Description("Name of the profile"),
+			mcp.Description("Name of the profile. Mutually exclusive with profile_id"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID filter for name lookup"),
+			mcp.Description("Project scope. Only valid with name lookup"),
 		),
 	), t.getProfile)
 
@@ -153,21 +151,20 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	s.AddTool(mcp.NewTool("minder_get_rule_type",
 		mcp.WithDescription("Get a rule type by ID or name. "+
-			"Use rule_type_id for UUID lookup, or name for name lookup. "+
-			"Do not provide both."),
+			"Use rule_type_id for UUID lookup, or name for name lookup."),
 		mcp.WithTitleAnnotation("Get Rule Type"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("rule_type_id",
 			mcp.Title("Rule Type ID"),
-			mcp.Description("UUID of the rule type"),
+			mcp.Description("UUID of the rule type. Mutually exclusive with name"),
 		),
 		mcp.WithString("name",
 			mcp.Title("Rule Type Name"),
-			mcp.Description("Name of the rule type"),
+			mcp.Description("Name of the rule type. Mutually exclusive with rule_type_id"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID filter for name lookup"),
+			mcp.Description("Project scope. Only valid with name lookup"),
 		),
 	), t.getRuleType)
 
@@ -185,21 +182,20 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	s.AddTool(mcp.NewTool("minder_get_data_source",
 		mcp.WithDescription("Get a data source by ID or name. "+
-			"Use data_source_id for UUID lookup, or name for name lookup. "+
-			"Do not provide both."),
+			"Use data_source_id for UUID lookup, or name for name lookup."),
 		mcp.WithTitleAnnotation("Get Data Source"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("data_source_id",
 			mcp.Title("Data Source ID"),
-			mcp.Description("UUID of the data source"),
+			mcp.Description("UUID of the data source. Mutually exclusive with name"),
 		),
 		mcp.WithString("name",
 			mcp.Title("Data Source Name"),
-			mcp.Description("Name of the data source"),
+			mcp.Description("Name of the data source. Mutually exclusive with data_source_id"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID filter for name lookup"),
+			mcp.Description("Project scope. Only valid with name lookup"),
 		),
 	), t.getDataSource)
 
@@ -258,21 +254,20 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	s.AddTool(mcp.NewTool("minder_get_artifact",
 		mcp.WithDescription("Get an artifact by ID or name. "+
-			"Use artifact_id for UUID lookup, or name for name lookup. "+
-			"Do not provide both."),
+			"Use artifact_id for UUID lookup, or name for name lookup."),
 		mcp.WithTitleAnnotation("Get Artifact"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("artifact_id",
 			mcp.Title("Artifact ID"),
-			mcp.Description("UUID of the artifact"),
+			mcp.Description("UUID of the artifact. Mutually exclusive with name"),
 		),
 		mcp.WithString("name",
 			mcp.Title("Artifact Name"),
-			mcp.Description("Full artifact name including registry path"),
+			mcp.Description("Full artifact name including registry path. Mutually exclusive with artifact_id"),
 		),
 		mcp.WithString("provider",
 			mcp.Title("Provider"),
-			mcp.Description("Provider name filter for name lookup"),
+			mcp.Description("Provider filter. Only valid with name lookup"),
 		),
 	), t.getArtifact)
 

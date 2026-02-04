@@ -48,7 +48,7 @@ func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	provider := req.GetString("provider", "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", "name"); errMsg != "" {
+	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", "name", provider, "provider"); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
 

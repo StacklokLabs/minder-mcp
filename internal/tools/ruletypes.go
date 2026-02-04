@@ -43,7 +43,7 @@ func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	projectID := req.GetString("project_id", "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(ruleTypeID, name, "rule_type_id", "name"); errMsg != "" {
+	if errMsg := ValidateLookupParams(ruleTypeID, name, "rule_type_id", "name", projectID, "project_id"); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
 
