@@ -74,10 +74,6 @@ The server supports two authentication methods (in priority order):
 - `minder_list_providers` - List all providers
 - `minder_get_provider` - Get a provider by name
 
-### Users
-- `minder_get_user` - Get current user information
-- `minder_list_invitations` - List pending invitations
-
 ### Artifacts
 - `minder_list_artifacts` - List artifacts
 - `minder_get_artifact_by_id` - Get an artifact by its ID
@@ -85,10 +81,6 @@ The server supports two authentication methods (in priority order):
 
 ### Evaluation Results
 - `minder_list_evaluation_history` - List evaluation history with optional filters
-
-### Permissions
-- `minder_list_roles` - List available roles
-- `minder_list_role_assignments` - List role assignments
 
 ## Usage
 

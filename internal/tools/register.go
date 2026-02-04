@@ -284,21 +284,6 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.getProvider)
 
-	// Users
-	s.AddTool(mcp.NewTool("minder_get_user",
-		mcp.WithDescription("Get information about the currently authenticated user. "+
-			"Returns user ID, identity, and project memberships."),
-		mcp.WithTitleAnnotation("Get Current User"),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), t.getUser)
-
-	s.AddTool(mcp.NewTool("minder_list_invitations",
-		mcp.WithDescription("List pending project invitations for the current user. "+
-			"Returns invitation details including project and role information."),
-		mcp.WithTitleAnnotation("List Invitations"),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), t.listInvitations)
-
 	// Artifacts
 	s.AddTool(mcp.NewTool("minder_list_artifacts",
 		mcp.WithDescription("List artifacts (container images, packages) tracked by Minder. "+
@@ -401,28 +386,6 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Max(100),
 		),
 	), t.listEvaluationHistory)
-
-	// Permissions
-	s.AddTool(mcp.NewTool("minder_list_roles",
-		mcp.WithDescription("List available roles that can be assigned to users. Returns role names and permission sets."),
-		mcp.WithTitleAnnotation("List Roles"),
-		mcp.WithReadOnlyHintAnnotation(true),
-		mcp.WithString("project_id",
-			mcp.Title("Project ID"),
-			mcp.Description("Filter roles by project UUID. Omit to list from all accessible projects"),
-		),
-	), t.listRoles)
-
-	s.AddTool(mcp.NewTool("minder_list_role_assignments",
-		mcp.WithDescription("List role assignments showing which users have which roles. "+
-			"Returns user identities and their assigned roles."),
-		mcp.WithTitleAnnotation("List Role Assignments"),
-		mcp.WithReadOnlyHintAnnotation(true),
-		mcp.WithString("project_id",
-			mcp.Title("Project ID"),
-			mcp.Description("Filter role assignments by project UUID. Omit to list from all accessible projects"),
-		),
-	), t.listRoleAssignments)
 }
 
 // getClient creates a new Minder client using the token from context.
