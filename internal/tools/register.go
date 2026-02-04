@@ -25,20 +25,16 @@ func New(cfg *config.Config) *Tools {
 func (t *Tools) Register(s *server.MCPServer) {
 	// Projects
 	s.AddTool(mcp.NewTool("minder_list_projects",
-		mcp.WithDescription("List all projects accessible to the current user. Returns project IDs, names, and metadata."),
+		mcp.WithDescription("List projects accessible to the current user. "+
+			"If project_id is provided, lists child projects of that project. "+
+			"Otherwise, lists all top-level accessible projects."),
 		mcp.WithTitleAnnotation("List Projects"),
-		mcp.WithReadOnlyHintAnnotation(true),
-	), t.listProjects)
-
-	s.AddTool(mcp.NewTool("minder_list_child_projects",
-		mcp.WithDescription("List child projects nested under a parent project. Returns project hierarchy information."),
-		mcp.WithTitleAnnotation("List Child Projects"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("UUID of the parent project to list children for"),
+			mcp.Description("UUID of a parent project to list children for. Omit to list all accessible projects"),
 		),
-	), t.listChildProjects)
+	), t.listProjects)
 
 	// Repositories
 	s.AddTool(mcp.NewTool("minder_list_repositories",

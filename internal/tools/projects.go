@@ -8,27 +8,7 @@ import (
 	minderv1 "github.com/mindersec/minder/pkg/api/protobuf/go/minder/v1"
 )
 
-func (t *Tools) listProjects(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
-	resp, err := client.Projects().ListProjects(ctx, &minderv1.ListProjectsRequest{})
-	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
-	}
-
-	data, err := json.MarshalIndent(resp.Projects, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
-}
-
-func (t *Tools) listChildProjects(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (t *Tools) listProjects(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	client, err := t.getClient(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -37,19 +17,28 @@ func (t *Tools) listChildProjects(ctx context.Context, req mcp.CallToolRequest) 
 
 	projectID := req.GetString("project_id", "")
 
-	reqProto := &minderv1.ListChildProjectsRequest{}
+	var projects any
 	if projectID != "" {
-		reqProto.Context = &minderv1.ContextV2{
-			ProjectId: projectID,
+		// List child projects of the specified parent
+		resp, err := client.Projects().ListChildProjects(ctx, &minderv1.ListChildProjectsRequest{
+			Context: &minderv1.ContextV2{
+				ProjectId: projectID,
+			},
+		})
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
 		}
+		projects = resp.Projects
+	} else {
+		// List all accessible projects
+		resp, err := client.Projects().ListProjects(ctx, &minderv1.ListProjectsRequest{})
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		projects = resp.Projects
 	}
 
-	resp, err := client.Projects().ListChildProjects(ctx, reqProto)
-	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
-	}
-
-	data, err := json.MarshalIndent(resp.Projects, "", "  ")
+	data, err := json.MarshalIndent(projects, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
 	}

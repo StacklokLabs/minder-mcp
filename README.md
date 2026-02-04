@@ -43,8 +43,7 @@ The server supports two authentication methods (in priority order):
 ## Available Tools
 
 ### Projects
-- `minder_list_projects` - List all projects accessible to the current user
-- `minder_list_child_projects` - List child projects of a given project
+- `minder_list_projects` - List projects (all accessible, or children of a specific project)
 
 ### Repositories
 - `minder_list_repositories` - List repositories registered with Minder
