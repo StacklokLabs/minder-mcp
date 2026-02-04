@@ -32,6 +32,7 @@ The server is configured via environment variables:
 | `MINDER_INSECURE` | Allow insecure connections | `false` |
 | `MCP_PORT` | MCP HTTP server port | `8080` |
 | `MCP_ENDPOINT_PATH` | MCP endpoint path | `/mcp` |
+| `LOG_LEVEL` | logging level | `info` |
 
 ## Authentication
 
