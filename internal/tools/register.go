@@ -50,7 +50,8 @@ func (t *Tools) Register(s *server.MCPServer) {
 	// Repositories
 	s.AddTool(mcp.NewTool("minder_list_repositories",
 		mcp.WithDescription("List repositories registered with Minder. "+
-			"Returns repository details including ID, name, owner, provider, and registration status."),
+			"Returns repository details including ID, name, owner, provider, and registration status. "+
+			"Supports cursor-based pagination."),
 		mcp.WithTitleAnnotation("List Repositories"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("project_id",
@@ -60,6 +61,16 @@ func (t *Tools) Register(s *server.MCPServer) {
 		mcp.WithString("provider",
 			mcp.Title("Provider"),
 			mcp.Description("Filter repositories by provider name (e.g., 'github')"),
+		),
+		mcp.WithString("cursor",
+			mcp.Title("Pagination Cursor"),
+			mcp.Description("Cursor from previous response for pagination. Omit for first page"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Title("Page Size"),
+			mcp.Description("Maximum number of results per page (1-100)"),
+			mcp.Min(1),
+			mcp.Max(100),
 		),
 	), t.listRepositories)
 
@@ -238,12 +249,23 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	// Providers
 	s.AddTool(mcp.NewTool("minder_list_providers",
-		mcp.WithDescription("List configured providers (e.g., GitHub, GitLab). Returns provider names, types, and connection status."),
+		mcp.WithDescription("List configured providers (e.g., GitHub, GitLab). "+
+			"Returns provider names, types, and connection status. Supports cursor-based pagination."),
 		mcp.WithTitleAnnotation("List Providers"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
 			mcp.Description("Filter providers by project UUID. Omit to list from all accessible projects"),
+		),
+		mcp.WithString("cursor",
+			mcp.Title("Pagination Cursor"),
+			mcp.Description("Cursor from previous response for pagination. Omit for first page"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Title("Page Size"),
+			mcp.Description("Maximum number of results per page (1-100)"),
+			mcp.Min(1),
+			mcp.Max(100),
 		),
 	), t.listProviders)
 
@@ -324,7 +346,8 @@ func (t *Tools) Register(s *server.MCPServer) {
 	// Evaluation Results
 	s.AddTool(mcp.NewTool("minder_list_evaluation_history",
 		mcp.WithDescription("List historical evaluation results for profile rules. "+
-			"Returns evaluation timestamps, statuses, and entity details with filtering support."),
+			"Returns evaluation timestamps, statuses, and entity details with filtering support. "+
+			"Supports cursor-based pagination with total record count."),
 		mcp.WithTitleAnnotation("List Evaluation History"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("project_id",
@@ -366,6 +389,16 @@ func (t *Tools) Register(s *server.MCPServer) {
 		mcp.WithString("to",
 			mcp.Title("To Time"),
 			mcp.Description("End of time range filter in RFC3339 format (e.g., 2024-01-15T17:00:00Z)"),
+		),
+		mcp.WithString("cursor",
+			mcp.Title("Pagination Cursor"),
+			mcp.Description("Cursor from previous response for pagination. Omit for first page"),
+		),
+		mcp.WithNumber("page_size",
+			mcp.Title("Page Size"),
+			mcp.Description("Number of results per page (1-100)"),
+			mcp.Min(1),
+			mcp.Max(100),
 		),
 	), t.listEvaluationHistory)
 

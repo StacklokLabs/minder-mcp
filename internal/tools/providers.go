@@ -16,6 +16,8 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 	defer client.Close()
 
 	projectID := req.GetString("project_id", "")
+	cursor := req.GetString("cursor", "")
+	limit := req.GetInt("limit", 0)
 
 	reqProto := &minderv1.ListProvidersRequest{}
 	if projectID != "" {
@@ -24,12 +26,31 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 		}
 	}
 
+	// Add pagination parameters
+	if cursor != "" {
+		reqProto.Cursor = cursor
+	}
+	if limit > 0 && limit <= 100 {
+		reqProto.Limit = int32(limit) //nolint:gosec // limit is bounded by schema validation (1-100)
+	}
+
 	resp, err := client.Providers().ListProviders(ctx, reqProto)
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	data, err := json.MarshalIndent(resp.Providers, "", "  ")
+	// Build paginated response
+	result := map[string]any{
+		"results": resp.Providers,
+	}
+	if resp.Cursor != "" {
+		result["next_cursor"] = resp.Cursor
+		result["has_more"] = true
+	} else {
+		result["has_more"] = false
+	}
+
+	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
 	}
