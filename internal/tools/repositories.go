@@ -63,66 +63,53 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 	return mcp.NewToolResultText(string(data)), nil
 }
 
-func (t *Tools) getRepositoryByID(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
+func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	repoID := req.GetString("repository_id", "")
-	if repoID == "" {
-		return mcp.NewToolResultError("repository_id is required"), nil
-	}
-
-	resp, err := client.Repositories().GetRepositoryById(ctx, &minderv1.GetRepositoryByIdRequest{
-		RepositoryId: repoID,
-	})
-	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
-	}
-
-	data, err := json.MarshalIndent(resp.Repository, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
-}
-
-func (t *Tools) getRepositoryByName(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
 	owner := req.GetString("owner", "")
 	name := req.GetString("name", "")
 	provider := req.GetString("provider", "")
 
-	if owner == "" || name == "" {
-		return mcp.NewToolResultError("owner and name are required"), nil
+	// Validate parameters
+	if errMsg := ValidateRepositoryLookupParams(repoID, owner, name); errMsg != "" {
+		return mcp.NewToolResultError(errMsg), nil
 	}
 
-	// Format as owner/name
-	fullName := owner + "/" + name
-
-	reqProto := &minderv1.GetRepositoryByNameRequest{
-		Name: fullName,
-	}
-	if provider != "" {
-		reqProto.Context = &minderv1.Context{
-			Provider: &provider,
-		}
-	}
-
-	resp, err := client.Repositories().GetRepositoryByName(ctx, reqProto)
+	client, err := t.getClient(ctx)
 	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer client.Close()
+
+	var repository *minderv1.Repository
+
+	if repoID != "" {
+		// Lookup by ID
+		resp, err := client.Repositories().GetRepositoryById(ctx, &minderv1.GetRepositoryByIdRequest{
+			RepositoryId: repoID,
+		})
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		repository = resp.Repository
+	} else {
+		// Lookup by owner/name
+		fullName := owner + "/" + name
+		reqProto := &minderv1.GetRepositoryByNameRequest{
+			Name: fullName,
+		}
+		if provider != "" {
+			reqProto.Context = &minderv1.Context{
+				Provider: &provider,
+			}
+		}
+		resp, err := client.Repositories().GetRepositoryByName(ctx, reqProto)
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		repository = resp.Repository
 	}
 
-	data, err := json.MarshalIndent(resp.Repository, "", "  ")
+	data, err := json.MarshalIndent(repository, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
 	}

@@ -63,38 +63,29 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.listRepositories)
 
-	s.AddTool(mcp.NewTool("minder_get_repository_by_id",
-		mcp.WithDescription("Get detailed information about a specific repository by its UUID. "+
-			"Returns full repository details including configuration and status."),
-		mcp.WithTitleAnnotation("Get Repository by ID"),
+	s.AddTool(mcp.NewTool("minder_get_repository",
+		mcp.WithDescription("Get a repository by ID or owner/name. "+
+			"Use repository_id for UUID lookup, or provide both owner and name for name lookup. "+
+			"Do not provide both methods."),
+		mcp.WithTitleAnnotation("Get Repository"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("repository_id",
-			mcp.Required(),
 			mcp.Title("Repository ID"),
-			mcp.Description("UUID of the repository to retrieve"),
+			mcp.Description("UUID of the repository"),
 		),
-	), t.getRepositoryByID)
-
-	s.AddTool(mcp.NewTool("minder_get_repository_by_name",
-		mcp.WithDescription("Get detailed information about a repository by its owner and name. "+
-			"Returns full repository details including configuration and status."),
-		mcp.WithTitleAnnotation("Get Repository by Name"),
-		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("owner",
-			mcp.Required(),
 			mcp.Title("Owner"),
 			mcp.Description("Repository owner or organization name"),
 		),
 		mcp.WithString("name",
-			mcp.Required(),
 			mcp.Title("Name"),
-			mcp.Description("Repository name without the owner prefix"),
+			mcp.Description("Repository name without owner prefix"),
 		),
 		mcp.WithString("provider",
 			mcp.Title("Provider"),
-			mcp.Description("Provider name to scope the lookup (e.g., 'github')"),
+			mcp.Description("Provider name filter for name lookup"),
 		),
-	), t.getRepositoryByName)
+	), t.getRepository)
 
 	// Profiles
 	s.AddTool(mcp.NewTool("minder_list_profiles",
@@ -112,33 +103,25 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.listProfiles)
 
-	s.AddTool(mcp.NewTool("minder_get_profile_by_id",
-		mcp.WithDescription("Get detailed information about a security profile by its UUID. "+
-			"Returns full profile configuration including all rule definitions."),
-		mcp.WithTitleAnnotation("Get Profile by ID"),
+	s.AddTool(mcp.NewTool("minder_get_profile",
+		mcp.WithDescription("Get a security profile by ID or name. "+
+			"Use profile_id for UUID lookup, or name for name lookup. "+
+			"Do not provide both."),
+		mcp.WithTitleAnnotation("Get Profile"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("profile_id",
-			mcp.Required(),
 			mcp.Title("Profile ID"),
-			mcp.Description("UUID of the profile to retrieve"),
+			mcp.Description("UUID of the profile"),
 		),
-	), t.getProfileByID)
-
-	s.AddTool(mcp.NewTool("minder_get_profile_by_name",
-		mcp.WithDescription("Get detailed information about a security profile by its name. "+
-			"Returns full profile configuration including all rule definitions."),
-		mcp.WithTitleAnnotation("Get Profile by Name"),
-		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("name",
-			mcp.Required(),
 			mcp.Title("Profile Name"),
-			mcp.Description("Name of the profile to retrieve"),
+			mcp.Description("Name of the profile"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID to scope the lookup. Omit to search all accessible projects"),
+			mcp.Description("Project UUID filter for name lookup"),
 		),
-	), t.getProfileByName)
+	), t.getProfile)
 
 	s.AddTool(mcp.NewTool("minder_get_profile_status_by_name",
 		mcp.WithDescription("Get the current evaluation status of a profile. "+
@@ -168,33 +151,25 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.listRuleTypes)
 
-	s.AddTool(mcp.NewTool("minder_get_rule_type_by_id",
-		mcp.WithDescription("Get detailed information about a rule type by its UUID. "+
-			"Returns full rule definition including parameter schema and evaluation logic."),
-		mcp.WithTitleAnnotation("Get Rule Type by ID"),
+	s.AddTool(mcp.NewTool("minder_get_rule_type",
+		mcp.WithDescription("Get a rule type by ID or name. "+
+			"Use rule_type_id for UUID lookup, or name for name lookup. "+
+			"Do not provide both."),
+		mcp.WithTitleAnnotation("Get Rule Type"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("rule_type_id",
-			mcp.Required(),
 			mcp.Title("Rule Type ID"),
-			mcp.Description("UUID of the rule type to retrieve"),
+			mcp.Description("UUID of the rule type"),
 		),
-	), t.getRuleTypeByID)
-
-	s.AddTool(mcp.NewTool("minder_get_rule_type_by_name",
-		mcp.WithDescription("Get detailed information about a rule type by its name. "+
-			"Returns full rule definition including parameter schema and evaluation logic."),
-		mcp.WithTitleAnnotation("Get Rule Type by Name"),
-		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("name",
-			mcp.Required(),
 			mcp.Title("Rule Type Name"),
-			mcp.Description("Name of the rule type to retrieve"),
+			mcp.Description("Name of the rule type"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID to scope the lookup. Omit to search all accessible projects"),
+			mcp.Description("Project UUID filter for name lookup"),
 		),
-	), t.getRuleTypeByName)
+	), t.getRuleType)
 
 	// Data Sources
 	s.AddTool(mcp.NewTool("minder_list_data_sources",
@@ -208,33 +183,25 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.listDataSources)
 
-	s.AddTool(mcp.NewTool("minder_get_data_source_by_id",
-		mcp.WithDescription("Get detailed information about a data source by its UUID. "+
-			"Returns full data source configuration and connection details."),
-		mcp.WithTitleAnnotation("Get Data Source by ID"),
+	s.AddTool(mcp.NewTool("minder_get_data_source",
+		mcp.WithDescription("Get a data source by ID or name. "+
+			"Use data_source_id for UUID lookup, or name for name lookup. "+
+			"Do not provide both."),
+		mcp.WithTitleAnnotation("Get Data Source"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("data_source_id",
-			mcp.Required(),
 			mcp.Title("Data Source ID"),
-			mcp.Description("UUID of the data source to retrieve"),
+			mcp.Description("UUID of the data source"),
 		),
-	), t.getDataSourceByID)
-
-	s.AddTool(mcp.NewTool("minder_get_data_source_by_name",
-		mcp.WithDescription("Get detailed information about a data source by its name. "+
-			"Returns full data source configuration and connection details."),
-		mcp.WithTitleAnnotation("Get Data Source by Name"),
-		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("name",
-			mcp.Required(),
 			mcp.Title("Data Source Name"),
-			mcp.Description("Name of the data source to retrieve"),
+			mcp.Description("Name of the data source"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID to scope the lookup. Omit to search all accessible projects"),
+			mcp.Description("Project UUID filter for name lookup"),
 		),
-	), t.getDataSourceByName)
+	), t.getDataSource)
 
 	// Providers
 	s.AddTool(mcp.NewTool("minder_list_providers",
@@ -289,33 +256,25 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.listArtifacts)
 
-	s.AddTool(mcp.NewTool("minder_get_artifact_by_id",
-		mcp.WithDescription("Get detailed information about an artifact by its UUID. "+
-			"Returns artifact metadata, versions, and vulnerability information."),
-		mcp.WithTitleAnnotation("Get Artifact by ID"),
+	s.AddTool(mcp.NewTool("minder_get_artifact",
+		mcp.WithDescription("Get an artifact by ID or name. "+
+			"Use artifact_id for UUID lookup, or name for name lookup. "+
+			"Do not provide both."),
+		mcp.WithTitleAnnotation("Get Artifact"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("artifact_id",
-			mcp.Required(),
 			mcp.Title("Artifact ID"),
-			mcp.Description("UUID of the artifact to retrieve"),
+			mcp.Description("UUID of the artifact"),
 		),
-	), t.getArtifactByID)
-
-	s.AddTool(mcp.NewTool("minder_get_artifact_by_name",
-		mcp.WithDescription("Get detailed information about an artifact by its name. "+
-			"Returns artifact metadata, versions, and vulnerability information."),
-		mcp.WithTitleAnnotation("Get Artifact by Name"),
-		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("name",
-			mcp.Required(),
 			mcp.Title("Artifact Name"),
 			mcp.Description("Full artifact name including registry path"),
 		),
 		mcp.WithString("provider",
 			mcp.Title("Provider"),
-			mcp.Description("Provider name to scope the lookup (e.g., 'github')"),
+			mcp.Description("Provider name filter for name lookup"),
 		),
-	), t.getArtifactByName)
+	), t.getArtifact)
 
 	// Evaluation Results
 	s.AddTool(mcp.NewTool("minder_list_evaluation_history",

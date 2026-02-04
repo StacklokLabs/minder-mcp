@@ -42,62 +42,51 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(string(data)), nil
 }
 
-func (t *Tools) getArtifactByID(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
+func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	artifactID := req.GetString("artifact_id", "")
-	if artifactID == "" {
-		return mcp.NewToolResultError("artifact_id is required"), nil
-	}
-
-	resp, err := client.Artifacts().GetArtifactById(ctx, &minderv1.GetArtifactByIdRequest{
-		Id: artifactID,
-	})
-	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
-	}
-
-	data, err := json.MarshalIndent(resp.Artifact, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
-}
-
-func (t *Tools) getArtifactByName(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
 	name := req.GetString("name", "")
 	provider := req.GetString("provider", "")
 
-	if name == "" {
-		return mcp.NewToolResultError("name is required"), nil
+	// Validate parameters
+	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", "name"); errMsg != "" {
+		return mcp.NewToolResultError(errMsg), nil
 	}
 
-	reqProto := &minderv1.GetArtifactByNameRequest{
-		Name: name,
-	}
-	if provider != "" {
-		reqProto.Context = &minderv1.Context{
-			Provider: &provider,
-		}
-	}
-
-	resp, err := client.Artifacts().GetArtifactByName(ctx, reqProto)
+	client, err := t.getClient(ctx)
 	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer client.Close()
+
+	var artifact *minderv1.Artifact
+
+	if artifactID != "" {
+		// Lookup by ID
+		resp, err := client.Artifacts().GetArtifactById(ctx, &minderv1.GetArtifactByIdRequest{
+			Id: artifactID,
+		})
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		artifact = resp.Artifact
+	} else {
+		// Lookup by name
+		reqProto := &minderv1.GetArtifactByNameRequest{
+			Name: name,
+		}
+		if provider != "" {
+			reqProto.Context = &minderv1.Context{
+				Provider: &provider,
+			}
+		}
+		resp, err := client.Artifacts().GetArtifactByName(ctx, reqProto)
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		artifact = resp.Artifact
 	}
 
-	data, err := json.MarshalIndent(resp.Artifact, "", "  ")
+	data, err := json.MarshalIndent(artifact, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
 	}

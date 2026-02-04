@@ -47,24 +47,20 @@ The server supports two authentication methods (in priority order):
 
 ### Repositories
 - `minder_list_repositories` - List repositories registered with Minder
-- `minder_get_repository_by_id` - Get a repository by its ID
-- `minder_get_repository_by_name` - Get a repository by owner and name
+- `minder_get_repository` - Get a repository by ID or owner/name
 
 ### Profiles
 - `minder_list_profiles` - List all profiles
-- `minder_get_profile_by_id` - Get a profile by its ID
-- `minder_get_profile_by_name` - Get a profile by name
+- `minder_get_profile` - Get a profile by ID or name
 - `minder_get_profile_status_by_name` - Get profile evaluation status
 
 ### Rule Types
 - `minder_list_rule_types` - List all rule types
-- `minder_get_rule_type_by_id` - Get a rule type by its ID
-- `minder_get_rule_type_by_name` - Get a rule type by name
+- `minder_get_rule_type` - Get a rule type by ID or name
 
 ### Data Sources
 - `minder_list_data_sources` - List all data sources
-- `minder_get_data_source_by_id` - Get a data source by its ID
-- `minder_get_data_source_by_name` - Get a data source by name
+- `minder_get_data_source` - Get a data source by ID or name
 
 ### Providers
 - `minder_list_providers` - List all providers
@@ -72,8 +68,7 @@ The server supports two authentication methods (in priority order):
 
 ### Artifacts
 - `minder_list_artifacts` - List artifacts
-- `minder_get_artifact_by_id` - Get an artifact by its ID
-- `minder_get_artifact_by_name` - Get an artifact by name
+- `minder_get_artifact` - Get an artifact by ID or name
 
 ### Evaluation Results
 - `minder_list_evaluation_history` - List evaluation history with optional filters

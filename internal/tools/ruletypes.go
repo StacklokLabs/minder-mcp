@@ -37,62 +37,51 @@ func (t *Tools) listRuleTypes(ctx context.Context, req mcp.CallToolRequest) (*mc
 	return mcp.NewToolResultText(string(data)), nil
 }
 
-func (t *Tools) getRuleTypeByID(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
+func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	ruleTypeID := req.GetString("rule_type_id", "")
-	if ruleTypeID == "" {
-		return mcp.NewToolResultError("rule_type_id is required"), nil
-	}
-
-	resp, err := client.RuleTypes().GetRuleTypeById(ctx, &minderv1.GetRuleTypeByIdRequest{
-		Id: ruleTypeID,
-	})
-	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
-	}
-
-	data, err := json.MarshalIndent(resp.RuleType, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
-}
-
-func (t *Tools) getRuleTypeByName(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	client, err := t.getClient(ctx)
-	if err != nil {
-		return mcp.NewToolResultError(err.Error()), nil
-	}
-	defer client.Close()
-
 	name := req.GetString("name", "")
 	projectID := req.GetString("project_id", "")
 
-	if name == "" {
-		return mcp.NewToolResultError("name is required"), nil
+	// Validate parameters
+	if errMsg := ValidateLookupParams(ruleTypeID, name, "rule_type_id", "name"); errMsg != "" {
+		return mcp.NewToolResultError(errMsg), nil
 	}
 
-	reqProto := &minderv1.GetRuleTypeByNameRequest{
-		Name: name,
-	}
-	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
-		}
-	}
-
-	resp, err := client.RuleTypes().GetRuleTypeByName(ctx, reqProto)
+	client, err := t.getClient(ctx)
 	if err != nil {
-		return mcp.NewToolResultError(MapGRPCError(err)), nil
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer client.Close()
+
+	var ruleType *minderv1.RuleType
+
+	if ruleTypeID != "" {
+		// Lookup by ID
+		resp, err := client.RuleTypes().GetRuleTypeById(ctx, &minderv1.GetRuleTypeByIdRequest{
+			Id: ruleTypeID,
+		})
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		ruleType = resp.RuleType
+	} else {
+		// Lookup by name
+		reqProto := &minderv1.GetRuleTypeByNameRequest{
+			Name: name,
+		}
+		if projectID != "" {
+			reqProto.Context = &minderv1.Context{
+				Project: &projectID,
+			}
+		}
+		resp, err := client.RuleTypes().GetRuleTypeByName(ctx, reqProto)
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		ruleType = resp.RuleType
 	}
 
-	data, err := json.MarshalIndent(resp.RuleType, "", "  ")
+	data, err := json.MarshalIndent(ruleType, "", "  ")
 	if err != nil {
 		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
 	}
