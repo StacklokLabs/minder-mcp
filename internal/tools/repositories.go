@@ -14,6 +14,10 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 	provider := req.GetString("provider", "")
 	cursor := req.GetString("cursor", "")
@@ -77,6 +81,10 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	defer func() { _ = client.Close() }()
+
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
 
 	var repository *minderv1.Repository
 

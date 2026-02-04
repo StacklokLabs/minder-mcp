@@ -11,6 +11,7 @@ import (
 // MinderClient defines the interface for Minder client operations used by tools.
 type MinderClient interface {
 	Close() error
+	Health() minderv1.HealthServiceClient
 	Profiles() minderv1.ProfileServiceClient
 	Repositories() minderv1.RepositoryServiceClient
 	RuleTypes() minderv1.RuleTypeServiceClient

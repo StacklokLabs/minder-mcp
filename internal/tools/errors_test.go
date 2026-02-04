@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -197,6 +198,104 @@ func TestMapGRPCError(t *testing.T) {
 			got := MapGRPCError(tt.err)
 			if got != tt.wantMsg {
 				t.Errorf("MapGRPCError() = %q, want %q", got, tt.wantMsg)
+			}
+		})
+	}
+}
+
+func TestCheckHealth(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		setupMock    func(*mockMinderClient)
+		wantErr      bool
+		wantContains string
+	}{
+		{
+			name: "healthy server returns nil",
+			setupMock: func(_ *mockMinderClient) {
+				// Default mock returns OK
+			},
+			wantErr: false,
+		},
+		{
+			name: "unavailable server returns error",
+			setupMock: func(m *mockMinderClient) {
+				m.health.checkErr = status.Error(codes.Unavailable, "server down")
+			},
+			wantErr:      true,
+			wantContains: "Minder server is unavailable",
+		},
+		{
+			name: "deadline exceeded returns error",
+			setupMock: func(m *mockMinderClient) {
+				m.health.checkErr = status.Error(codes.DeadlineExceeded, "timeout")
+			},
+			wantErr:      true,
+			wantContains: "Unable to reach Minder server",
+		},
+		{
+			name: "canceled request returns error",
+			setupMock: func(m *mockMinderClient) {
+				m.health.checkErr = status.Error(codes.Canceled, "request canceled")
+			},
+			wantErr:      true,
+			wantContains: "Unable to reach Minder server",
+		},
+		{
+			name: "internal error returns error",
+			setupMock: func(m *mockMinderClient) {
+				m.health.checkErr = status.Error(codes.Internal, "server error")
+			},
+			wantErr:      true,
+			wantContains: "Minder server health check failed",
+		},
+		{
+			name: "non-gRPC error returns error",
+			setupMock: func(m *mockMinderClient) {
+				m.health.checkErr = errors.New("connection refused")
+			},
+			wantErr:      true,
+			wantContains: "Unable to connect to Minder server",
+		},
+		{
+			name: "unauthenticated error passes through",
+			setupMock: func(m *mockMinderClient) {
+				// Unauthenticated is a valid response from health check
+				// (server is running, just need auth)
+				m.health.checkErr = status.Error(codes.Unauthenticated, "invalid token")
+			},
+			wantErr: false, // Health check doesn't fail for auth errors
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			mockClient := newMockClient()
+			tt.setupMock(mockClient)
+
+			result := checkHealth(context.Background(), mockClient)
+
+			if tt.wantErr {
+				if result == nil {
+					t.Fatal("expected error result, got nil")
+				}
+				if !result.IsError {
+					t.Error("expected result to be an error")
+				}
+				// Check error message content
+				if len(result.Content) > 0 {
+					textContent, ok := mcp.AsTextContent(result.Content[0])
+					if ok && !strings.Contains(textContent.Text, tt.wantContains) {
+						t.Errorf("error message %q does not contain %q", textContent.Text, tt.wantContains)
+					}
+				}
+			} else {
+				if result != nil {
+					t.Errorf("expected nil result for healthy server, got %v", result)
+				}
 			}
 		})
 	}

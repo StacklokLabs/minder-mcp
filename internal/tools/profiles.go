@@ -14,6 +14,10 @@ func (t *Tools) listProfiles(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 	labelFilter := req.GetString("label_filter", "")
 
@@ -53,6 +57,10 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	var profile *minderv1.Profile
 
 	if profileID != "" {
@@ -90,6 +98,10 @@ func (t *Tools) getProfileStatusByName(ctx context.Context, req mcp.CallToolRequ
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	defer func() { _ = client.Close() }()
+
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
 
 	name := req.GetString("name", "")
 	projectID := req.GetString("project_id", "")

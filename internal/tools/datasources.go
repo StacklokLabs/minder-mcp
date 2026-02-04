@@ -14,6 +14,10 @@ func (t *Tools) listDataSources(ctx context.Context, req mcp.CallToolRequest) (*
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 
 	reqProto := &minderv1.ListDataSourcesRequest{}
@@ -48,6 +52,10 @@ func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	defer func() { _ = client.Close() }()
+
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
 
 	var dataSource *minderv1.DataSource
 

@@ -14,6 +14,10 @@ func (t *Tools) listProjects(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 
 	var projects any

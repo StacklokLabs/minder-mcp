@@ -17,6 +17,10 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 	profileName := req.GetString("profile_name", "")
 	entityType := req.GetString("entity_type", "")

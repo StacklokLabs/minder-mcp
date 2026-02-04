@@ -14,6 +14,10 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 	cursor := req.GetString("cursor", "")
 	limit := req.GetInt("limit", 0)
@@ -58,6 +62,10 @@ func (t *Tools) getProvider(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	defer func() { _ = client.Close() }()
+
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
 
 	name := req.GetString("name", "")
 	projectID := req.GetString("project_id", "")

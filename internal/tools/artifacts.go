@@ -14,6 +14,10 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 	provider := req.GetString("provider", "")
 
@@ -55,6 +59,10 @@ func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	defer func() { _ = client.Close() }()
+
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
 
 	var artifact *minderv1.Artifact
 

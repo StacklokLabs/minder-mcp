@@ -9,6 +9,7 @@ import (
 
 // mockMinderClient implements MinderClient for testing.
 type mockMinderClient struct {
+	health       *mockHealthService
 	profiles     *mockProfileService
 	repositories *mockRepositoryService
 	ruleTypes    *mockRuleTypeService
@@ -21,6 +22,7 @@ type mockMinderClient struct {
 
 func newMockClient() *mockMinderClient {
 	return &mockMinderClient{
+		health:       &mockHealthService{},
 		profiles:     &mockProfileService{},
 		repositories: &mockRepositoryService{},
 		ruleTypes:    &mockRuleTypeService{},
@@ -33,6 +35,7 @@ func newMockClient() *mockMinderClient {
 }
 
 func (*mockMinderClient) Close() error                                     { return nil }
+func (m *mockMinderClient) Health() minderv1.HealthServiceClient           { return m.health }
 func (m *mockMinderClient) Profiles() minderv1.ProfileServiceClient        { return m.profiles }
 func (m *mockMinderClient) Repositories() minderv1.RepositoryServiceClient { return m.repositories }
 func (m *mockMinderClient) RuleTypes() minderv1.RuleTypeServiceClient      { return m.ruleTypes }
@@ -43,6 +46,20 @@ func (m *mockMinderClient) Artifacts() minderv1.ArtifactServiceClient      { ret
 func (m *mockMinderClient) EvalResults() minderv1.EvalResultsServiceClient { return m.evalResults }
 
 // Mock service implementations
+
+type mockHealthService struct {
+	minderv1.HealthServiceClient
+	checkResp *minderv1.CheckHealthResponse
+	checkErr  error
+}
+
+func (m *mockHealthService) CheckHealth(_ context.Context, _ *minderv1.CheckHealthRequest, _ ...grpc.CallOption) (*minderv1.CheckHealthResponse, error) {
+	// By default return healthy status if no response/error is set
+	if m.checkResp == nil && m.checkErr == nil {
+		return &minderv1.CheckHealthResponse{Status: "OK"}, nil
+	}
+	return m.checkResp, m.checkErr
+}
 
 type mockProfileService struct {
 	minderv1.ProfileServiceClient

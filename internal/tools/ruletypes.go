@@ -14,6 +14,10 @@ func (t *Tools) listRuleTypes(ctx context.Context, req mcp.CallToolRequest) (*mc
 	}
 	defer func() { _ = client.Close() }()
 
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
+
 	projectID := req.GetString("project_id", "")
 
 	reqProto := &minderv1.ListRuleTypesRequest{}
@@ -48,6 +52,10 @@ func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	defer func() { _ = client.Close() }()
+
+	if errResult := checkHealth(ctx, client); errResult != nil {
+		return errResult, nil
+	}
 
 	var ruleType *minderv1.RuleType
 
