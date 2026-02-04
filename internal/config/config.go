@@ -16,8 +16,9 @@ func OSEnvReader(key string) string {
 
 // Config holds all configuration for the MCP server.
 type Config struct {
-	Minder MinderConfig
-	MCP    MCPConfig
+	LogLevel string
+	Minder   MinderConfig
+	MCP      MCPConfig
 }
 
 // MinderConfig holds Minder-specific configuration.
@@ -42,6 +43,7 @@ func Load() *Config {
 // LoadWithReader reads configuration using the provided EnvReader.
 func LoadWithReader(getEnv EnvReader) *Config {
 	return &Config{
+		LogLevel: getEnvDefault(getEnv, "LOG_LEVEL", "info"),
 		Minder: MinderConfig{
 			AuthToken: getEnvDefault(getEnv, "MINDER_AUTH_TOKEN", ""),
 			Host:      getEnvDefault(getEnv, "MINDER_SERVER_HOST", "api.stacklok.com"),

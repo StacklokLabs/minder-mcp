@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -15,21 +17,35 @@ import (
 type Tools struct {
 	cfg           *config.Config
 	clientFactory ClientFactory
+	logger        *slog.Logger
 }
 
 // New creates a new Tools instance with the default client factory.
-func New(cfg *config.Config) *Tools {
-	t := &Tools{cfg: cfg}
+func New(cfg *config.Config, logger *slog.Logger) *Tools {
+	t := &Tools{cfg: cfg, logger: logger}
 	t.clientFactory = t.defaultClientFactory
 	return t
 }
 
 // NewWithClientFactory creates a new Tools instance with a custom client factory.
 // This is useful for testing with mock clients.
-func NewWithClientFactory(cfg *config.Config, factory ClientFactory) *Tools {
+func NewWithClientFactory(cfg *config.Config, logger *slog.Logger, factory ClientFactory) *Tools {
 	return &Tools{
 		cfg:           cfg,
 		clientFactory: factory,
+		logger:        logger,
+	}
+}
+
+// wrapHandler wraps a tool handler with debug logging.
+func (t *Tools) wrapHandler(name string, handler server.ToolHandlerFunc) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		start := time.Now()
+		t.logger.DebugContext(ctx, "tool invoked", "tool", name, "params", req.Params.Arguments)
+		result, err := handler(ctx, req)
+		hasError := err != nil
+		t.logger.DebugContext(ctx, "tool completed", "tool", name, "duration", time.Since(start), "error", hasError)
+		return result, err
 	}
 }
 
@@ -46,7 +62,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("UUID of a parent project to list children for. Omit to list all accessible projects"),
 		),
-	), t.listProjects)
+	), t.wrapHandler("minder_list_projects", t.listProjects))
 
 	// Repositories
 	s.AddTool(mcp.NewTool("minder_list_repositories",
@@ -73,7 +89,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Min(1),
 			mcp.Max(100),
 		),
-	), t.listRepositories)
+	), t.wrapHandler("minder_list_repositories", t.listRepositories))
 
 	s.AddTool(mcp.NewTool("minder_get_repository",
 		mcp.WithDescription("Get a repository by ID or owner/name. "+
@@ -100,7 +116,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Provider"),
 			mcp.Description("Provider filter. Only valid with owner/name lookup"),
 		),
-	), t.getRepository)
+	), t.wrapHandler("minder_get_repository", t.getRepository))
 
 	// Profiles
 	s.AddTool(mcp.NewTool("minder_list_profiles",
@@ -116,7 +132,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Label Filter"),
 			mcp.Description("Filter profiles by label selector expression"),
 		),
-	), t.listProfiles)
+	), t.wrapHandler("minder_list_profiles", t.listProfiles))
 
 	s.AddTool(mcp.NewTool("minder_get_profile",
 		mcp.WithDescription("Get a security profile by ID or name. "+
@@ -135,7 +151,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Project scope. Only valid with name lookup"),
 		),
-	), t.getProfile)
+	), t.wrapHandler("minder_get_profile", t.getProfile))
 
 	s.AddTool(mcp.NewTool("minder_get_profile_status_by_name",
 		mcp.WithDescription("Get the current evaluation status of a profile. "+
@@ -151,7 +167,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Project UUID to scope the lookup. Omit to search all accessible projects"),
 		),
-	), t.getProfileStatusByName)
+	), t.wrapHandler("minder_get_profile_status_by_name", t.getProfileStatusByName))
 
 	// Rule Types
 	s.AddTool(mcp.NewTool("minder_list_rule_types",
@@ -163,7 +179,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Filter rule types by project UUID. Omit to list from all accessible projects"),
 		),
-	), t.listRuleTypes)
+	), t.wrapHandler("minder_list_rule_types", t.listRuleTypes))
 
 	s.AddTool(mcp.NewTool("minder_get_rule_type",
 		mcp.WithDescription("Get a rule type by ID or name. "+
@@ -182,7 +198,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Project scope. Only valid with name lookup"),
 		),
-	), t.getRuleType)
+	), t.wrapHandler("minder_get_rule_type", t.getRuleType))
 
 	// Data Sources
 	s.AddTool(mcp.NewTool("minder_list_data_sources",
@@ -194,7 +210,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Filter data sources by project UUID. Omit to list from all accessible projects"),
 		),
-	), t.listDataSources)
+	), t.wrapHandler("minder_list_data_sources", t.listDataSources))
 
 	s.AddTool(mcp.NewTool("minder_get_data_source",
 		mcp.WithDescription("Get a data source by ID or name. "+
@@ -213,7 +229,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Project scope. Only valid with name lookup"),
 		),
-	), t.getDataSource)
+	), t.wrapHandler("minder_get_data_source", t.getDataSource))
 
 	// Providers
 	s.AddTool(mcp.NewTool("minder_list_providers",
@@ -235,7 +251,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Min(1),
 			mcp.Max(100),
 		),
-	), t.listProviders)
+	), t.wrapHandler("minder_list_providers", t.listProviders))
 
 	s.AddTool(mcp.NewTool("minder_get_provider",
 		mcp.WithDescription("Get detailed information about a provider by its name. Returns provider configuration and capabilities."),
@@ -250,7 +266,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Project ID"),
 			mcp.Description("Project UUID to scope the lookup. Omit to search all accessible projects"),
 		),
-	), t.getProvider)
+	), t.wrapHandler("minder_get_provider", t.getProvider))
 
 	// Artifacts
 	s.AddTool(mcp.NewTool("minder_list_artifacts",
@@ -266,7 +282,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Provider"),
 			mcp.Description("Filter artifacts by provider name (e.g., 'github')"),
 		),
-	), t.listArtifacts)
+	), t.wrapHandler("minder_list_artifacts", t.listArtifacts))
 
 	s.AddTool(mcp.NewTool("minder_get_artifact",
 		mcp.WithDescription("Get an artifact by ID or name. "+
@@ -289,7 +305,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Title("Provider"),
 			mcp.Description("Provider filter. Only valid with name lookup"),
 		),
-	), t.getArtifact)
+	), t.wrapHandler("minder_get_artifact", t.getArtifact))
 
 	// Evaluation Results
 	s.AddTool(mcp.NewTool("minder_list_evaluation_history",
@@ -348,7 +364,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Min(1),
 			mcp.Max(100),
 		),
-	), t.listEvaluationHistory)
+	), t.wrapHandler("minder_list_evaluation_history", t.listEvaluationHistory))
 }
 
 // getClient returns a MinderClient using the configured factory.

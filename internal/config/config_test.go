@@ -16,6 +16,9 @@ func TestLoadWithReader_Defaults(t *testing.T) {
 
 	cfg := LoadWithReader(mockEnvReader(map[string]string{}))
 
+	if cfg.LogLevel != "info" {
+		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "info")
+	}
 	if cfg.Minder.AuthToken != "" {
 		t.Errorf("AuthToken = %q, want empty", cfg.Minder.AuthToken)
 	}
@@ -40,6 +43,7 @@ func TestLoadWithReader_CustomValues(t *testing.T) {
 	t.Parallel()
 
 	env := map[string]string{
+		"LOG_LEVEL":          "debug",
 		"MINDER_AUTH_TOKEN":  "test-token",
 		"MINDER_SERVER_HOST": "localhost",
 		"MINDER_SERVER_PORT": "9090",
@@ -50,6 +54,9 @@ func TestLoadWithReader_CustomValues(t *testing.T) {
 
 	cfg := LoadWithReader(mockEnvReader(env))
 
+	if cfg.LogLevel != "debug" {
+		t.Errorf("LogLevel = %q, want %q", cfg.LogLevel, "debug")
+	}
 	if cfg.Minder.AuthToken != "test-token" {
 		t.Errorf("AuthToken = %q, want %q", cfg.Minder.AuthToken, "test-token")
 	}

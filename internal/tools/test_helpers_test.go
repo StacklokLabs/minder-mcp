@@ -2,6 +2,8 @@ package tools
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -29,7 +31,9 @@ func getResultText(t *testing.T, result *mcp.CallToolResult) string {
 
 // newTestTools creates a Tools instance with a mock client factory for testing.
 func newTestTools(mockClient *mockMinderClient) *Tools {
-	return NewWithClientFactory(&config.Config{}, func(_ context.Context) (MinderClient, error) {
+	// Use a discarding logger for tests
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	return NewWithClientFactory(&config.Config{}, logger, func(_ context.Context) (MinderClient, error) {
 		return mockClient, nil
 	})
 }
