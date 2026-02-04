@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -108,10 +107,5 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 		result["pagination"] = pagination
 	}
 
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(result)
 }

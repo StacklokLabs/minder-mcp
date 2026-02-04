@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	minderv1 "github.com/mindersec/minder/pkg/api/protobuf/go/minder/v1"
@@ -33,12 +32,7 @@ func (t *Tools) listProfiles(ctx context.Context, req mcp.CallToolRequest) (*mcp
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	data, err := json.MarshalIndent(resp.Profiles, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(resp.Profiles)
 }
 
 func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -85,12 +79,7 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 		profile = resp.Profile
 	}
 
-	data, err := json.MarshalIndent(profile, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(profile)
 }
 
 func (t *Tools) getProfileStatusByName(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -121,10 +110,5 @@ func (t *Tools) getProfileStatusByName(ctx context.Context, req mcp.CallToolRequ
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	data, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(resp)
 }

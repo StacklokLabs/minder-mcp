@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	minderv1 "github.com/mindersec/minder/pkg/api/protobuf/go/minder/v1"
@@ -34,12 +33,7 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	data, err := json.MarshalIndent(resp.Results, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(resp.Results)
 }
 
 func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -86,10 +80,5 @@ func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		artifact = resp.Artifact
 	}
 
-	data, err := json.MarshalIndent(artifact, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(artifact)
 }

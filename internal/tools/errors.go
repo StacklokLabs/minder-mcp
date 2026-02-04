@@ -2,9 +2,24 @@
 package tools
 
 import (
+	"encoding/json"
+
+	"github.com/mark3labs/mcp-go/mcp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// marshalResult converts a value to pretty-printed JSON and returns it as an MCP tool result.
+// On marshal failure, returns an error result (not a Go error).
+//
+//nolint:unparam // error return matches tool handler signature for direct return
+func marshalResult(v any) (*mcp.CallToolResult, error) {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
+	}
+	return mcp.NewToolResultText(string(data)), nil
+}
 
 // MapGRPCError converts a gRPC error to a user-friendly error message.
 //

@@ -2,7 +2,6 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	minderv1 "github.com/mindersec/minder/pkg/api/protobuf/go/minder/v1"
@@ -29,12 +28,7 @@ func (t *Tools) listDataSources(ctx context.Context, req mcp.CallToolRequest) (*
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	data, err := json.MarshalIndent(resp.DataSources, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(resp.DataSources)
 }
 
 func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -81,10 +75,5 @@ func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mc
 		dataSource = resp.DataSource
 	}
 
-	data, err := json.MarshalIndent(dataSource, "", "  ")
-	if err != nil {
-		return mcp.NewToolResultError("failed to marshal response: " + err.Error()), nil
-	}
-
-	return mcp.NewToolResultText(string(data)), nil
+	return marshalResult(dataSource)
 }
