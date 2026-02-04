@@ -12,7 +12,7 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	projectID := req.GetString("project_id", "")
 	provider := req.GetString("provider", "")
@@ -76,7 +76,7 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	var repository *minderv1.Repository
 

@@ -39,7 +39,7 @@ func main() {
 		if token == "" {
 			token = cfg.Minder.AuthToken
 		}
-		return context.WithValue(ctx, middleware.AuthTokenKey, token)
+		return middleware.ContextWithToken(ctx, token)
 	}
 
 	// Create streamable HTTP server with auth context

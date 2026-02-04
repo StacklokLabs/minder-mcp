@@ -12,7 +12,7 @@ func (t *Tools) listRuleTypes(ctx context.Context, req mcp.CallToolRequest) (*mc
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	projectID := req.GetString("project_id", "")
 
@@ -47,7 +47,7 @@ func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	var ruleType *minderv1.RuleType
 

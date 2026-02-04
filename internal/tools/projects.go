@@ -12,7 +12,7 @@ func (t *Tools) listProjects(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	projectID := req.GetString("project_id", "")
 

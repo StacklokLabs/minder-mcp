@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -99,24 +100,24 @@ func TestMapGRPCError(t *testing.T) {
 			wantMsg: "",
 		},
 		{
-			name:    "not found",
-			err:     status.Error(codes.NotFound, "resource missing"),
-			wantMsg: "Not found: resource missing",
+			name:    "OK code",
+			err:     status.Error(codes.OK, ""),
+			wantMsg: "",
 		},
 		{
-			name:    "permission denied",
-			err:     status.Error(codes.PermissionDenied, "access denied"),
-			wantMsg: "Permission denied: access denied",
+			name:    "canceled",
+			err:     status.Error(codes.Canceled, "client canceled"),
+			wantMsg: "Request was canceled",
 		},
 		{
-			name:    "unauthenticated",
-			err:     status.Error(codes.Unauthenticated, "invalid token"),
-			wantMsg: "Authentication required: invalid token",
+			name:    "unknown",
+			err:     status.Error(codes.Unknown, "mystery error"),
+			wantMsg: "Unknown error: mystery error",
 		},
 		{
-			name:    "internal error",
-			err:     status.Error(codes.Internal, "something broke"),
-			wantMsg: "Internal server error",
+			name:    "invalid argument",
+			err:     status.Error(codes.InvalidArgument, "bad input"),
+			wantMsg: "Invalid argument: bad input",
 		},
 		{
 			name:    "deadline exceeded",
@@ -124,9 +125,69 @@ func TestMapGRPCError(t *testing.T) {
 			wantMsg: "Request timed out",
 		},
 		{
-			name:    "invalid argument",
-			err:     status.Error(codes.InvalidArgument, "bad input"),
-			wantMsg: "Invalid argument: bad input",
+			name:    "not found",
+			err:     status.Error(codes.NotFound, "resource missing"),
+			wantMsg: "Not found: resource missing",
+		},
+		{
+			name:    "already exists",
+			err:     status.Error(codes.AlreadyExists, "duplicate entry"),
+			wantMsg: "Already exists: duplicate entry",
+		},
+		{
+			name:    "permission denied",
+			err:     status.Error(codes.PermissionDenied, "access denied"),
+			wantMsg: "Permission denied: access denied",
+		},
+		{
+			name:    "resource exhausted",
+			err:     status.Error(codes.ResourceExhausted, "quota exceeded"),
+			wantMsg: "Resource exhausted: quota exceeded",
+		},
+		{
+			name:    "failed precondition",
+			err:     status.Error(codes.FailedPrecondition, "invalid state"),
+			wantMsg: "Failed precondition: invalid state",
+		},
+		{
+			name:    "aborted",
+			err:     status.Error(codes.Aborted, "transaction aborted"),
+			wantMsg: "Operation aborted: transaction aborted",
+		},
+		{
+			name:    "out of range",
+			err:     status.Error(codes.OutOfRange, "index out of bounds"),
+			wantMsg: "Out of range: index out of bounds",
+		},
+		{
+			name:    "unimplemented",
+			err:     status.Error(codes.Unimplemented, "not supported"),
+			wantMsg: "Operation not implemented",
+		},
+		{
+			name:    "internal error",
+			err:     status.Error(codes.Internal, "something broke"),
+			wantMsg: "Internal server error",
+		},
+		{
+			name:    "unavailable",
+			err:     status.Error(codes.Unavailable, "server down"),
+			wantMsg: "Service unavailable",
+		},
+		{
+			name:    "data loss",
+			err:     status.Error(codes.DataLoss, "corruption detected"),
+			wantMsg: "Data loss error",
+		},
+		{
+			name:    "unauthenticated",
+			err:     status.Error(codes.Unauthenticated, "invalid token"),
+			wantMsg: "Authentication required: invalid token",
+		},
+		{
+			name:    "non-gRPC error",
+			err:     errors.New("plain error"),
+			wantMsg: "plain error",
 		},
 	}
 

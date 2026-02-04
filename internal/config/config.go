@@ -6,6 +6,14 @@ import (
 	"strconv"
 )
 
+// EnvReader is a function type for reading environment variables.
+type EnvReader func(key string) string
+
+// OSEnvReader is the default EnvReader that uses os.Getenv.
+func OSEnvReader(key string) string {
+	return os.Getenv(key)
+}
+
 // Config holds all configuration for the MCP server.
 type Config struct {
 	Minder MinderConfig
@@ -26,31 +34,36 @@ type MCPConfig struct {
 	EndpointPath string
 }
 
-// Load reads configuration from environment variables.
+// Load reads configuration from environment variables using the default OS reader.
 func Load() *Config {
+	return LoadWithReader(OSEnvReader)
+}
+
+// LoadWithReader reads configuration using the provided EnvReader.
+func LoadWithReader(getEnv EnvReader) *Config {
 	return &Config{
 		Minder: MinderConfig{
-			AuthToken: getEnv("MINDER_AUTH_TOKEN", ""),
-			Host:      getEnv("MINDER_SERVER_HOST", "api.stacklok.com"),
-			Port:      getEnvInt("MINDER_SERVER_PORT", 443),
-			Insecure:  getEnvBool("MINDER_INSECURE", false),
+			AuthToken: getEnvDefault(getEnv, "MINDER_AUTH_TOKEN", ""),
+			Host:      getEnvDefault(getEnv, "MINDER_SERVER_HOST", "api.stacklok.com"),
+			Port:      getEnvInt(getEnv, "MINDER_SERVER_PORT", 443),
+			Insecure:  getEnvBool(getEnv, "MINDER_INSECURE", false),
 		},
 		MCP: MCPConfig{
-			Port:         getEnvInt("MCP_PORT", 8080),
-			EndpointPath: getEnv("MCP_ENDPOINT_PATH", "/mcp"),
+			Port:         getEnvInt(getEnv, "MCP_PORT", 8080),
+			EndpointPath: getEnvDefault(getEnv, "MCP_ENDPOINT_PATH", "/mcp"),
 		},
 	}
 }
 
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
+func getEnvDefault(getEnv EnvReader, key, defaultValue string) string {
+	if value := getEnv(key); value != "" {
 		return value
 	}
 	return defaultValue
 }
 
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
+func getEnvInt(getEnv EnvReader, key string, defaultValue int) int {
+	if value := getEnv(key); value != "" {
 		if intVal, err := strconv.Atoi(value); err == nil {
 			return intVal
 		}
@@ -58,8 +71,8 @@ func getEnvInt(key string, defaultValue int) int {
 	return defaultValue
 }
 
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
+func getEnvBool(getEnv EnvReader, key string, defaultValue bool) bool {
+	if value := getEnv(key); value != "" {
 		if boolVal, err := strconv.ParseBool(value); err == nil {
 			return boolVal
 		}

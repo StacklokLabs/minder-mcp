@@ -13,12 +13,24 @@ import (
 
 // Tools holds the tool handlers and configuration.
 type Tools struct {
-	cfg *config.Config
+	cfg           *config.Config
+	clientFactory ClientFactory
 }
 
-// New creates a new Tools instance.
+// New creates a new Tools instance with the default client factory.
 func New(cfg *config.Config) *Tools {
-	return &Tools{cfg: cfg}
+	t := &Tools{cfg: cfg}
+	t.clientFactory = t.defaultClientFactory
+	return t
+}
+
+// NewWithClientFactory creates a new Tools instance with a custom client factory.
+// This is useful for testing with mock clients.
+func NewWithClientFactory(cfg *config.Config, factory ClientFactory) *Tools {
+	return &Tools{
+		cfg:           cfg,
+		clientFactory: factory,
+	}
 }
 
 // Register registers all MCP tools with the server.
@@ -339,8 +351,13 @@ func (t *Tools) Register(s *server.MCPServer) {
 	), t.listEvaluationHistory)
 }
 
-// getClient creates a new Minder client using the token from context.
-func (t *Tools) getClient(ctx context.Context) (*minder.Client, error) {
+// getClient returns a MinderClient using the configured factory.
+func (t *Tools) getClient(ctx context.Context) (MinderClient, error) {
+	return t.clientFactory(ctx)
+}
+
+// defaultClientFactory creates a real Minder client using the token from context.
+func (t *Tools) defaultClientFactory(ctx context.Context) (MinderClient, error) {
 	token := middleware.TokenFromContext(ctx)
 
 	return minder.NewClient(minder.ClientConfig{

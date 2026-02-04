@@ -15,7 +15,7 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	projectID := req.GetString("project_id", "")
 	profileName := req.GetString("profile_name", "")
