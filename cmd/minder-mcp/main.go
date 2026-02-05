@@ -72,7 +72,6 @@ func main() {
 		server.WithEndpointPath(cfg.MCP.EndpointPath),
 		server.WithHeartbeatInterval(30*time.Second),
 		server.WithHTTPContextFunc(authContextFunc),
-		server.WithStateLess(true), // Enable stateless mode for MCP Apps compatibility
 	)
 
 	// Wrap with CORS middleware for MCP Apps support
@@ -80,6 +79,7 @@ func main() {
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"Mcp-Session-Id"}, // Required for MCP session management
 		AllowCredentials: true,
 	}).Handler(mcpHandler)
 
