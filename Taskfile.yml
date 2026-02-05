@@ -145,13 +145,14 @@ tasks:
       - golangci-lint run --fix ./...
 
   lint:ui:
-    desc: Lint UI code (ESLint + TypeScript)
+    desc: Lint UI code (ESLint + TypeScript + Prettier)
     dir: '{{.UI_DIR}}'
     deps:
       - deps:ui
     cmds:
       - npm run lint
       - npm run typecheck
+      - npm run format:check
 
   # ============================================================
   # Formatting
