@@ -292,6 +292,8 @@ async function loadDashboard(): Promise<void> {
       // Host doesn't support active tool calls - show waiting state
       // Data will come through ontoolresult notifications when LLM calls tools
       console.log('[Dashboard] Waiting for tool results via notifications...');
+      // Hide refresh button since we can't actively fetch data
+      refreshBtn.style.display = 'none';
       showWaitingForData();
       return;
     }
