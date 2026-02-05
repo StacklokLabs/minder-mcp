@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors https:;">
+  <title>Minder Compliance Dashboard</title>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <div class="logo"></div>
+        Minder Compliance Dashboard
+      </h1>
+      <button class="refresh-btn" id="refresh-btn">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.418A6 6 0 1 1 8 2v1z"/>
+          <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+        </svg>
+        Refresh
+      </button>
+    </header>
+
+    <div id="error-container"></div>
+
+    <div id="summary-cards" class="summary-cards">
+      <div class="card">
+        <div class="card-label">Total Repositories</div>
+        <div class="card-value" id="total-repos">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Passing</div>
+        <div class="card-value success" id="passing-count">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Failing</div>
+        <div class="card-value failure" id="failing-count">-</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Compliance Rate</div>
+        <div class="compliance-rate">
+          <span class="percentage" id="compliance-rate">-</span>
+          <span class="symbol">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="profiles">Profiles</button>
+      <button class="tab" data-tab="repositories">Repositories</button>
+    </div>
+
+    <div id="profiles-section" class="section">
+      <div class="filter-bar">
+        <input type="text" class="filter-input" id="profile-filter" placeholder="Filter profiles...">
+      </div>
+      <div id="profiles-list" class="list">
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading profiles...
+        </div>
+      </div>
+    </div>
+
+    <div id="repositories-section" class="section" style="display: none;">
+      <div class="filter-bar">
+        <input type="text" class="filter-input" id="repo-filter" placeholder="Filter repositories...">
+        <select class="filter-select" id="status-filter">
+          <option value="">All Statuses</option>
+          <option value="success">Passing</option>
+          <option value="failure">Failing</option>
+          <option value="error">Error</option>
+          <option value="pending">Pending</option>
+        </select>
+      </div>
+      <div id="repositories-list" class="list">
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading repositories...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

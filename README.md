@@ -7,6 +7,7 @@ An MCP (Model Context Protocol) server that exposes Minder's read operations via
 - Read-only access to Minder resources through MCP tools
 - Supports authentication via HTTP header or environment variable
 - Streaming HTTP transport with heartbeat support
+- **Compliance Dashboard**: Interactive UI served as an MCP resource for MCP Apps-enabled clients
 
 ## Installation
 
@@ -74,6 +75,19 @@ The server supports two authentication methods (in priority order):
 ### Evaluation Results
 - `minder_list_evaluation_history` - List evaluation history with optional filters
 
+## Resources
+
+### Compliance Dashboard
+- **URI**: `ui://minder/compliance-dashboard`
+- **MIME Type**: `text/html`
+
+An interactive compliance dashboard that displays real-time compliance status across repositories with drill-down capabilities. The dashboard is designed for MCP Apps-enabled clients (VS Code, Claude, etc.) and provides:
+
+- Summary cards showing total repositories, passing/failing counts, and compliance rate
+- Profile list with expandable rule evaluation details
+- Repository list with filtering
+- Real-time data from Minder via MCP tools
+
 ## Usage
 
 ### Running the Server
@@ -104,6 +118,15 @@ task fmt
 
 # Build, lint, and test
 task all
+
+# Build UI only
+task build:ui
+
+# Lint UI (TypeScript)
+task lint:ui
+
+# Lint everything (Go + UI)
+task lint:all
 ```
 
 ## License

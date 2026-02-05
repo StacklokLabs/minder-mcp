@@ -29,3 +29,6 @@ vendor/
 
 # Minder offline token
 offline.token
+
+# Node.js (UI build)
+node_modules/

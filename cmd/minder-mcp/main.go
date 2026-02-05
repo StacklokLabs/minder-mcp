@@ -15,6 +15,7 @@ import (
 	"github.com/stacklok/minder-mcp/internal/config"
 	"github.com/stacklok/minder-mcp/internal/logging"
 	"github.com/stacklok/minder-mcp/internal/middleware"
+	"github.com/stacklok/minder-mcp/internal/resources"
 	"github.com/stacklok/minder-mcp/internal/tools"
 )
 
@@ -39,12 +40,16 @@ func main() {
 		"minder-mcp",
 		"0.1.0",
 		server.WithToolCapabilities(true),
+		server.WithResourceCapabilities(true, false), // Enable resource listing
 	)
 
 	// Register tools
 	t := tools.New(cfg, logger)
 	defer t.Close() // Ensure cleanup of HTTP client resources
 	t.Register(mcpServer)
+
+	// Register resources (including compliance dashboard)
+	resources.Register(mcpServer)
 
 	// Create HTTP context function that extracts auth token
 	authContextFunc := func(ctx context.Context, r *http.Request) context.Context {

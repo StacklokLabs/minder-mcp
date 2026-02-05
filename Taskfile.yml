@@ -3,6 +3,7 @@ version: '3'
 vars:
   BINARY_NAME: minder-mcp
   BUILD_DIR: bin
+  UI_DIR: ui/compliance-dashboard
 
 tasks:
   default:
@@ -11,15 +12,41 @@ tasks:
       - task: build
 
   build:
-    desc: Build the minder-mcp binary
+    desc: Build the minder-mcp binary (includes UI build)
+    deps:
+      - build:ui
     cmds:
       - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd/minder-mcp
     sources:
       - '**/*.go'
       - go.mod
       - go.sum
+      - internal/resources/dist/index.html
     generates:
       - '{{.BUILD_DIR}}/{{.BINARY_NAME}}'
+
+  build:ui:
+    desc: Build the compliance dashboard UI
+    dir: '{{.UI_DIR}}'
+    cmds:
+      - npm ci
+      - npm run build
+    sources:
+      - 'src/**/*'
+      - 'index.html'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+    generates:
+      - '../../internal/resources/dist/index.html'
+
+  lint:ui:
+    desc: Lint the compliance dashboard UI
+    dir: '{{.UI_DIR}}'
+    cmds:
+      - npm ci
+      - npm run lint
+      - npm run typecheck
 
   test:
     desc: Run tests
@@ -42,6 +69,12 @@ tasks:
     cmds:
       - golangci-lint run --fix ./...
 
+  lint:all:
+    desc: Run all linters (Go and UI)
+    cmds:
+      - task: lint
+      - task: lint:ui
+
   fmt:
     desc: Format code
     cmds:
@@ -53,6 +86,8 @@ tasks:
     cmds:
       - rm -rf {{.BUILD_DIR}}
       - rm -f coverage.out coverage.html
+      - rm -rf internal/resources/dist
+      - rm -rf {{.UI_DIR}}/node_modules
 
   tidy:
     desc: Run go mod tidy
