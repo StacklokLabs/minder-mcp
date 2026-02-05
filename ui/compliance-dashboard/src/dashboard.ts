@@ -5,6 +5,7 @@ import {
   ProfileStatusApiResponse,
   Repository,
   RepositoriesApiResponse,
+  RuleEvaluationStatus,
   type ToolResultParams,
   type ToolInputParams,
 } from './mcp-client.js';
@@ -642,19 +643,75 @@ function toggleProfileExpand(profileId: string): void {
 }
 
 /**
+ * Build a map of repository name to its rule evaluations.
+ */
+function getRepoRuleEvaluations(): Map<string, RuleEvaluationStatus[]> {
+  const repoRules = new Map<string, RuleEvaluationStatus[]>();
+
+  for (const status of profileStatuses.values()) {
+    if (status.rule_evaluation_status) {
+      for (const rule of status.rule_evaluation_status) {
+        const entityName = rule.entity_info?.name;
+        if (entityName) {
+          const existing = repoRules.get(entityName) || [];
+          existing.push(rule);
+          repoRules.set(entityName, existing);
+        }
+      }
+    }
+  }
+
+  return repoRules;
+}
+
+/**
+ * Get overall status for a repository based on its rule evaluations.
+ */
+function getRepoStatus(
+  rules: RuleEvaluationStatus[] | undefined
+): 'success' | 'failure' | 'pending' | 'skipped' {
+  if (!rules || rules.length === 0) {
+    return 'pending';
+  }
+
+  const statuses = rules.map((r) => r.status);
+  if (statuses.some((s) => s === 'failure' || s === 'error')) {
+    return 'failure';
+  }
+  if (statuses.every((s) => s === 'success')) {
+    return 'success';
+  }
+  if (statuses.some((s) => s === 'pending')) {
+    return 'pending';
+  }
+  return 'skipped';
+}
+
+/**
  * Render the repositories list.
  */
 function renderRepositories(): void {
   const filter = repoFilterEl.value.toLowerCase();
   const statusFilter = statusFilterEl.value;
 
+  // Build repo -> rules mapping
+  const repoRules = getRepoRuleEvaluations();
+
   const filteredRepos = repositories.filter((r) => {
     const name = `${r.owner}/${r.name}`.toLowerCase();
-    return name.includes(filter);
-  });
+    const matchesFilter = name.includes(filter);
 
-  // Note: statusFilter is available for future use when we have per-repo compliance data
-  void statusFilter; // Explicitly mark as intentionally unused for now
+    // Apply status filter if set
+    if (statusFilter && statusFilter !== 'all') {
+      const repoName = `${r.owner}/${r.name}`;
+      const rules = repoRules.get(repoName);
+      const status = getRepoStatus(rules);
+      if (statusFilter === 'passing' && status !== 'success') return false;
+      if (statusFilter === 'failing' && status !== 'failure') return false;
+    }
+
+    return matchesFilter;
+  });
 
   if (filteredRepos.length === 0) {
     repositoriesListEl.innerHTML = `
@@ -666,26 +723,101 @@ function renderRepositories(): void {
   }
 
   repositoriesListEl.innerHTML = filteredRepos
-    .map(
-      (repo) => `
-      <div class="list-item">
-        <div class="list-item-header">
-          <div>
-            <div class="list-item-title">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5v-9zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8.5V1.5zm-8 11h8v1h-8a1 1 0 0 1 0-2z"/>
-              </svg>
-              ${escapeHtml(repo.owner)}/${escapeHtml(repo.name)}
+    .map((repo) => {
+      const repoName = `${repo.owner}/${repo.name}`;
+      const rules = repoRules.get(repoName);
+      const status = getRepoStatus(rules);
+      const safeRepoId = escapeAttr(repoName);
+      const safeStatus = escapeAttr(status);
+      const ruleCount = rules?.length || 0;
+      const passingCount = rules?.filter((r) => r.status === 'success').length || 0;
+      const failingCount = rules?.filter((r) => r.status === 'failure' || r.status === 'error').length || 0;
+
+      return `
+        <div class="list-item" data-repo-id="${safeRepoId}">
+          <div class="list-item-header">
+            <div>
+              <div class="list-item-title">
+                <svg class="chevron" data-repo-chevron="${safeRepoId}" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06z"/>
+                </svg>
+                ${escapeHtml(repoName)}
+              </div>
+              <div class="list-item-meta">
+                ${ruleCount > 0
+                  ? `${passingCount} passing, ${failingCount} failing`
+                  : 'No rule evaluations'}
+              </div>
             </div>
-            <div class="list-item-meta">
-              Provider: ${escapeHtml(repo.provider || 'unknown')}
-            </div>
+            <span class="status-badge ${safeStatus}">
+              <span class="status-dot ${safeStatus}"></span>
+              ${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}
+            </span>
           </div>
         </div>
-      </div>
-    `
-    )
+        <div class="expandable-content" data-repo-content="${safeRepoId}">
+          ${renderRepoRules(rules)}
+        </div>
+      `;
+    })
     .join('');
+
+  // Add click handlers for repo expansion
+  repositoriesListEl.querySelectorAll('.list-item[data-repo-id]').forEach((item) => {
+    item.addEventListener('click', () => {
+      const repoId = (item as HTMLElement).dataset.repoId;
+      if (repoId) {
+        toggleRepoExpand(repoId);
+      }
+    });
+  });
+}
+
+/**
+ * Render rules for a repository's expanded view.
+ */
+function renderRepoRules(rules: RuleEvaluationStatus[] | undefined): string {
+  if (!rules || rules.length === 0) {
+    return '<div class="empty-state">No rule evaluations for this repository</div>';
+  }
+
+  return `
+    <div class="rule-list">
+      ${rules
+        .map((rule) => {
+          const safeStatus = escapeAttr(rule.status || 'pending');
+          return `
+          <div class="rule-item-detailed">
+            <div class="rule-item-header">
+              <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type_name || 'Unknown rule')}</span>
+              <span class="status-badge ${safeStatus}">
+                <span class="status-dot ${safeStatus}"></span>
+                ${escapeHtml(rule.status || 'pending')}
+              </span>
+            </div>
+          </div>
+        `;
+        })
+        .join('')}
+    </div>
+  `;
+}
+
+/**
+ * Toggle repository expansion.
+ */
+function toggleRepoExpand(repoId: string): void {
+  const content = document.querySelector(
+    `[data-repo-content="${CSS.escape(repoId)}"]`
+  );
+  const chevron = document.querySelector(
+    `[data-repo-chevron="${CSS.escape(repoId)}"]`
+  );
+
+  if (content && chevron) {
+    content.classList.toggle('expanded');
+    chevron.classList.toggle('expanded');
+  }
 }
 
 /**
