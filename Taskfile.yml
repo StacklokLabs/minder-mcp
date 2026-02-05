@@ -55,6 +55,16 @@ tasks:
     generates:
       - '../../internal/resources/dist/index.html'
 
+  build:container:
+    desc: Build container image with ko (local)
+    deps:
+      - build:ui
+    preconditions:
+      - sh: command -v ko
+        msg: "ko not found. Install: go install github.com/google/ko@latest"
+    cmds:
+      - ko build --local ./cmd/minder-mcp
+
   # ============================================================
   # Dependencies
   # ============================================================
