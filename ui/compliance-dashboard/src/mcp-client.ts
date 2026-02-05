@@ -229,7 +229,10 @@ export class MCPAppsClient {
       args.project_id = projectId;
     }
     // API returns array directly, wrap it for dashboard
-    const profiles = await this.callTool<Profile[]>('minder_list_profiles', args);
+    const profiles = await this.callTool<Profile[]>(
+      'minder_list_profiles',
+      args
+    );
     return { profiles: Array.isArray(profiles) ? profiles : [] };
   }
 

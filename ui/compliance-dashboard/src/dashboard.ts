@@ -102,7 +102,9 @@ export function initDashboard(): void {
   profilesListEl = getRequiredElement<HTMLDivElement>('profiles-list');
   repositoriesListEl = getRequiredElement<HTMLDivElement>('repositories-list');
   profileFilterEl = getRequiredElement<HTMLInputElement>('profile-filter');
-  profileStatusFilterEl = getRequiredElement<HTMLSelectElement>('profile-status-filter');
+  profileStatusFilterEl = getRequiredElement<HTMLSelectElement>(
+    'profile-status-filter'
+  );
   repoFilterEl = getRequiredElement<HTMLInputElement>('repo-filter');
   statusFilterEl = getRequiredElement<HTMLSelectElement>('status-filter');
 
@@ -202,15 +204,11 @@ function handleToolResult(result: ToolResultParams): void {
   // Try to identify the data type and update accordingly
   // API returns profiles as array directly
   if (isProfilesArray(data)) {
-    console.log(
-      '[Dashboard] Received profiles data:',
-      data.length,
-      'profiles'
-    );
+    console.log('[Dashboard] Received profiles data:', data.length, 'profiles');
     profiles = data;
     updateSummaryCards();
     renderProfiles();
-  // API returns profile status with nested profile_status object
+    // API returns profile status with nested profile_status object
   } else if (isProfileStatusApiResponse(data)) {
     const status: ProfileStatusResult = {
       profile_id: data.profile_status.profile_id,
@@ -222,7 +220,7 @@ function handleToolResult(result: ToolResultParams): void {
     profileStatuses.set(status.profile_id, status);
     updateSummaryCards();
     renderProfiles();
-  // API returns repositories as { results: [...] }
+    // API returns repositories as { results: [...] }
   } else if (isRepositoriesApiResponse(data)) {
     console.log(
       '[Dashboard] Received repositories data:',
@@ -241,15 +239,20 @@ function handleToolResult(result: ToolResultParams): void {
  * Type guard for ProfilesResult - API returns array directly
  */
 function isProfilesArray(data: unknown): data is Profile[] {
-  return Array.isArray(data) && data.every(item =>
-    typeof item === 'object' && item !== null && 'name' in item
+  return (
+    Array.isArray(data) &&
+    data.every(
+      (item) => typeof item === 'object' && item !== null && 'name' in item
+    )
   );
 }
 
 /**
  * Type guard for ProfileStatusApiResponse - API returns nested structure
  */
-function isProfileStatusApiResponse(data: unknown): data is ProfileStatusApiResponse {
+function isProfileStatusApiResponse(
+  data: unknown
+): data is ProfileStatusApiResponse {
   return (
     typeof data === 'object' &&
     data !== null &&
@@ -261,7 +264,9 @@ function isProfileStatusApiResponse(data: unknown): data is ProfileStatusApiResp
 /**
  * Type guard for RepositoriesApiResponse - API returns { results: [...] }
  */
-function isRepositoriesApiResponse(data: unknown): data is RepositoriesApiResponse {
+function isRepositoriesApiResponse(
+  data: unknown
+): data is RepositoriesApiResponse {
   return (
     typeof data === 'object' &&
     data !== null &&
@@ -549,9 +554,12 @@ function renderProfiles(): void {
     if (statusFilter) {
       const status = profileStatuses.get(p.id);
       const overallStatus = getOverallStatus(status);
-      if (statusFilter === 'success' && overallStatus !== 'success') return false;
-      if (statusFilter === 'failure' && overallStatus !== 'failure') return false;
-      if (statusFilter === 'pending' && overallStatus !== 'pending') return false;
+      if (statusFilter === 'success' && overallStatus !== 'success')
+        return false;
+      if (statusFilter === 'failure' && overallStatus !== 'failure')
+        return false;
+      if (statusFilter === 'pending' && overallStatus !== 'pending')
+        return false;
     }
 
     return matchesName;
@@ -614,7 +622,10 @@ function renderProfiles(): void {
 /**
  * Render profile rules for expanded view.
  */
-function renderProfileRules(status: ProfileStatusResult | undefined, profileId: string): string {
+function renderProfileRules(
+  status: ProfileStatusResult | undefined,
+  profileId: string
+): string {
   if (
     !status?.rule_evaluation_status ||
     status.rule_evaluation_status.length === 0
@@ -623,8 +634,10 @@ function renderProfileRules(status: ProfileStatusResult | undefined, profileId: 
   }
 
   const rules = status.rule_evaluation_status;
-  const failingCount = rules.filter(r => r.status === 'failure' || r.status === 'error').length;
-  const passingCount = rules.filter(r => r.status === 'success').length;
+  const failingCount = rules.filter(
+    (r) => r.status === 'failure' || r.status === 'error'
+  ).length;
+  const passingCount = rules.filter((r) => r.status === 'success').length;
   const safeProfileId = escapeAttr(profileId);
 
   return `
@@ -639,7 +652,8 @@ function renderProfileRules(status: ProfileStatusResult | undefined, profileId: 
           const safeStatus = escapeAttr(rule.status || 'pending');
           const entityName = rule.entity_info?.name || 'Unknown entity';
           const entityType = rule.entity_info?.entity_type || 'entity';
-          const isFailing = rule.status === 'failure' || rule.status === 'error';
+          const isFailing =
+            rule.status === 'failure' || rule.status === 'error';
           const isPassing = rule.status === 'success';
 
           return `
@@ -772,8 +786,11 @@ function renderRepositories(): void {
       const safeRepoId = escapeAttr(repoName);
       const safeStatus = escapeAttr(status);
       const ruleCount = rules?.length || 0;
-      const passingCount = rules?.filter((r) => r.status === 'success').length || 0;
-      const failingCount = rules?.filter((r) => r.status === 'failure' || r.status === 'error').length || 0;
+      const passingCount =
+        rules?.filter((r) => r.status === 'success').length || 0;
+      const failingCount =
+        rules?.filter((r) => r.status === 'failure' || r.status === 'error')
+          .length || 0;
 
       return `
         <div class="list-item" data-repo-id="${safeRepoId}">
@@ -786,9 +803,11 @@ function renderRepositories(): void {
                 ${escapeHtml(repoName)}
               </div>
               <div class="list-item-meta">
-                ${ruleCount > 0
-                  ? `${passingCount} passing, ${failingCount} failing`
-                  : 'No rule evaluations'}
+                ${
+                  ruleCount > 0
+                    ? `${passingCount} passing, ${failingCount} failing`
+                    : 'No rule evaluations'
+                }
               </div>
             </div>
             <span class="status-badge ${safeStatus}">
@@ -805,26 +824,33 @@ function renderRepositories(): void {
     .join('');
 
   // Add click handlers for repo expansion
-  repositoriesListEl.querySelectorAll('.list-item[data-repo-id]').forEach((item) => {
-    item.addEventListener('click', () => {
-      const repoId = (item as HTMLElement).dataset.repoId;
-      if (repoId) {
-        toggleRepoExpand(repoId);
-      }
+  repositoriesListEl
+    .querySelectorAll('.list-item[data-repo-id]')
+    .forEach((item) => {
+      item.addEventListener('click', () => {
+        const repoId = (item as HTMLElement).dataset.repoId;
+        if (repoId) {
+          toggleRepoExpand(repoId);
+        }
+      });
     });
-  });
 }
 
 /**
  * Render rules for a repository's expanded view.
  */
-function renderRepoRules(rules: RuleEvaluationStatus[] | undefined, repoId: string): string {
+function renderRepoRules(
+  rules: RuleEvaluationStatus[] | undefined,
+  repoId: string
+): string {
   if (!rules || rules.length === 0) {
     return '<div class="empty-state">No rule evaluations for this repository</div>';
   }
 
-  const failingCount = rules.filter(r => r.status === 'failure' || r.status === 'error').length;
-  const passingCount = rules.filter(r => r.status === 'success').length;
+  const failingCount = rules.filter(
+    (r) => r.status === 'failure' || r.status === 'error'
+  ).length;
+  const passingCount = rules.filter((r) => r.status === 'success').length;
   const safeRepoId = escapeAttr(repoId);
 
   return `
@@ -837,7 +863,8 @@ function renderRepoRules(rules: RuleEvaluationStatus[] | undefined, repoId: stri
       ${rules
         .map((rule) => {
           const safeStatus = escapeAttr(rule.status || 'pending');
-          const isFailing = rule.status === 'failure' || rule.status === 'error';
+          const isFailing =
+            rule.status === 'failure' || rule.status === 'error';
           const isPassing = rule.status === 'success';
 
           return `
@@ -884,7 +911,9 @@ function setupRuleFilterHandlers(): void {
 
     if (!filterBtn) return;
 
-    const filterBar = filterBtn.closest('.rule-filter-bar') as HTMLElement | null;
+    const filterBar = filterBtn.closest(
+      '.rule-filter-bar'
+    ) as HTMLElement | null;
     if (!filterBar) return;
 
     const targetId = filterBar.dataset.filterTarget;
@@ -900,7 +929,9 @@ function setupRuleFilterHandlers(): void {
     filterBtn.classList.add('active');
 
     // Filter rules
-    const rulesList = document.querySelector(`[data-rules-list="${CSS.escape(targetId)}"]`);
+    const rulesList = document.querySelector(
+      `[data-rules-list="${CSS.escape(targetId)}"]`
+    );
     if (!rulesList) return;
 
     rulesList.querySelectorAll('.rule-item-detailed').forEach((item) => {
