@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/rs/cors"
 
 	"github.com/stacklok/minder-mcp/internal/config"
 	"github.com/stacklok/minder-mcp/internal/logging"
@@ -67,16 +68,25 @@ func main() {
 	}
 
 	// Create streamable HTTP server with auth context
-	httpServer := server.NewStreamableHTTPServer(mcpServer,
+	mcpHandler := server.NewStreamableHTTPServer(mcpServer,
 		server.WithEndpointPath(cfg.MCP.EndpointPath),
 		server.WithHeartbeatInterval(30*time.Second),
 		server.WithHTTPContextFunc(authContextFunc),
+		server.WithStateLess(true), // Enable stateless mode for MCP Apps compatibility
 	)
+
+	// Wrap with CORS middleware for MCP Apps support
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		AllowCredentials: true,
+	}).Handler(mcpHandler)
 
 	addr := fmt.Sprintf(":%d", cfg.MCP.Port)
 	slog.Info("Starting Minder MCP server", "addr", addr, "endpoint", cfg.MCP.EndpointPath)
 
-	if err := httpServer.Start(addr); err != nil {
+	if err := http.ListenAndServe(addr, corsHandler); err != nil {
 		slog.Error("Failed to start server", "error", err)
 		os.Exit(1)
 	}
