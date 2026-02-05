@@ -49,9 +49,16 @@ export class MCPAppsClient {
     });
 
     // Extract the content from the tool result
-    if (result.content && Array.isArray(result.content) && result.content.length > 0) {
+    if (
+      result.content &&
+      Array.isArray(result.content) &&
+      result.content.length > 0
+    ) {
       const firstContent = result.content[0];
-      if (firstContent.type === 'text' && typeof firstContent.text === 'string') {
+      if (
+        firstContent.type === 'text' &&
+        typeof firstContent.text === 'string'
+      ) {
         try {
           return JSON.parse(firstContent.text) as T;
         } catch {
@@ -71,9 +78,11 @@ export class MCPAppsClient {
     return this.callTool<ProfilesResult>('minder_list_profiles', args);
   }
 
-  async getProfileStatus(
-    options: { profileId?: string; name?: string; projectId?: string }
-  ): Promise<ProfileStatusResult> {
+  async getProfileStatus(options: {
+    profileId?: string;
+    name?: string;
+    projectId?: string;
+  }): Promise<ProfileStatusResult> {
     const args: Record<string, unknown> = {};
     if (options.profileId) {
       args.profile_id = options.profileId;
@@ -84,7 +93,10 @@ export class MCPAppsClient {
     if (options.projectId) {
       args.project_id = options.projectId;
     }
-    return this.callTool<ProfileStatusResult>('minder_get_profile_status', args);
+    return this.callTool<ProfileStatusResult>(
+      'minder_get_profile_status',
+      args
+    );
   }
 
   async listRepositories(options?: {

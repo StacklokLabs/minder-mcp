@@ -240,7 +240,8 @@ function updateSummaryCards(): void {
   const rate = total > 0 ? Math.round((passing / total) * 100) : 0;
   complianceRateEl.textContent = String(rate);
   complianceRateEl.className =
-    'percentage ' + (rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'failure');
+    'percentage ' +
+    (rate >= 80 ? 'success' : rate >= 50 ? 'warning' : 'failure');
 }
 
 /**
@@ -334,7 +335,10 @@ function renderProfiles(): void {
  * Render profile rules for expanded view.
  */
 function renderProfileRules(status: ProfileStatusResult | undefined): string {
-  if (!status?.rule_evaluation_status || status.rule_evaluation_status.length === 0) {
+  if (
+    !status?.rule_evaluation_status ||
+    status.rule_evaluation_status.length === 0
+  ) {
     return '<div class="empty-state">No rule evaluations</div>';
   }
 
@@ -426,15 +430,20 @@ function renderRepositories(): void {
  * Switch between tabs.
  */
 function switchTab(tab: string): void {
-  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-  document.querySelector(`[data-tab="${CSS.escape(tab)}"]`)?.classList.add('active');
+  document
+    .querySelectorAll('.tab')
+    .forEach((t) => t.classList.remove('active'));
+  document
+    .querySelector(`[data-tab="${CSS.escape(tab)}"]`)
+    ?.classList.add('active');
 
   const profilesSection = document.getElementById('profiles-section');
   const repositoriesSection = document.getElementById('repositories-section');
 
   if (profilesSection && repositoriesSection) {
     profilesSection.style.display = tab === 'profiles' ? 'block' : 'none';
-    repositoriesSection.style.display = tab === 'repositories' ? 'block' : 'none';
+    repositoriesSection.style.display =
+      tab === 'repositories' ? 'block' : 'none';
   }
 }
 

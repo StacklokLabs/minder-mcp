@@ -22,7 +22,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica,
+    Arial, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
@@ -109,9 +111,15 @@ h1 {
   font-weight: 600;
 }
 
-.card-value.success { color: var(--success); }
-.card-value.failure { color: var(--failure); }
-.card-value.warning { color: var(--warning); }
+.card-value.success {
+  color: var(--success);
+}
+.card-value.failure {
+  color: var(--failure);
+}
+.card-value.warning {
+  color: var(--warning);
+}
 
 .compliance-rate {
   display: flex;
@@ -227,11 +235,21 @@ h1 {
   border-radius: 50%;
 }
 
-.status-dot.success { background: var(--success); }
-.status-dot.failure { background: var(--failure); }
-.status-dot.error { background: var(--error); }
-.status-dot.pending { background: var(--pending); }
-.status-dot.skipped { background: var(--skipped); }
+.status-dot.success {
+  background: var(--success);
+}
+.status-dot.failure {
+  background: var(--failure);
+}
+.status-dot.error {
+  background: var(--error);
+}
+.status-dot.pending {
+  background: var(--pending);
+}
+.status-dot.skipped {
+  background: var(--skipped);
+}
 
 .expandable-content {
   display: none;
@@ -290,7 +308,9 @@ h1 {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-message {
@@ -324,7 +344,9 @@ h1 {
   font-size: 14px;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.2s, border-color 0.2s;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
 }
 
 .tab:hover {
