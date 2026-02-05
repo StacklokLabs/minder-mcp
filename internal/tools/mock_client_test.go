@@ -71,6 +71,7 @@ type mockProfileService struct {
 	getByNameErr  error
 	getStatusResp *minderv1.GetProfileStatusByNameResponse
 	getStatusErr  error
+	getStatusReq  *minderv1.GetProfileStatusByNameRequest // captured request
 }
 
 func (m *mockProfileService) ListProfiles(_ context.Context, _ *minderv1.ListProfilesRequest, _ ...grpc.CallOption) (*minderv1.ListProfilesResponse, error) {
@@ -85,7 +86,8 @@ func (m *mockProfileService) GetProfileByName(_ context.Context, _ *minderv1.Get
 	return m.getByNameResp, m.getByNameErr
 }
 
-func (m *mockProfileService) GetProfileStatusByName(_ context.Context, _ *minderv1.GetProfileStatusByNameRequest, _ ...grpc.CallOption) (*minderv1.GetProfileStatusByNameResponse, error) {
+func (m *mockProfileService) GetProfileStatusByName(_ context.Context, req *minderv1.GetProfileStatusByNameRequest, _ ...grpc.CallOption) (*minderv1.GetProfileStatusByNameResponse, error) {
+	m.getStatusReq = req
 	return m.getStatusResp, m.getStatusErr
 }
 

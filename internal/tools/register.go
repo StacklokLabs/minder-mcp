@@ -169,7 +169,7 @@ func (t *Tools) Register(s *server.MCPServer) {
 
 	s.AddTool(mcp.NewTool("minder_get_profile_status_by_name",
 		mcp.WithDescription("Get the current evaluation status of a profile. "+
-			"Returns compliance status across all entities including pass/fail counts."),
+			"Returns compliance status and detailed per-rule evaluation results for all entities."),
 		mcp.WithTitleAnnotation("Get Profile Status"),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithString("name",

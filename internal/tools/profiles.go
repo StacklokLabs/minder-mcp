@@ -112,6 +112,7 @@ func (t *Tools) getProfileStatusByName(ctx context.Context, req mcp.CallToolRequ
 
 	reqProto := &minderv1.GetProfileStatusByNameRequest{
 		Name: name,
+		All:  true, // Always request detailed per-rule evaluation results
 	}
 	if projectID != "" {
 		reqProto.Context = &minderv1.Context{

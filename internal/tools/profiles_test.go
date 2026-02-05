@@ -204,9 +204,10 @@ func TestGetProfileStatusByName(t *testing.T) {
 		params      map[string]any
 		wantErr     bool
 		errContains string
+		checkReq    func(*testing.T, *mockMinderClient)
 	}{
 		{
-			name: "gets status successfully",
+			name: "gets status successfully with All flag set",
 			mockSetup: func(m *mockMinderClient) {
 				m.profiles.getStatusResp = &minderv1.GetProfileStatusByNameResponse{
 					ProfileStatus: &minderv1.ProfileStatus{
@@ -216,6 +217,18 @@ func TestGetProfileStatusByName(t *testing.T) {
 			},
 			params:  map[string]any{"name": "test-profile"},
 			wantErr: false,
+			checkReq: func(t *testing.T, m *mockMinderClient) {
+				t.Helper()
+				if m.profiles.getStatusReq == nil {
+					t.Fatal("expected request to be captured")
+				}
+				if !m.profiles.getStatusReq.All {
+					t.Error("expected All flag to be true for detailed evaluation results")
+				}
+				if m.profiles.getStatusReq.Name != "test-profile" {
+					t.Errorf("expected name %q, got %q", "test-profile", m.profiles.getStatusReq.Name)
+				}
+			},
 		},
 		{
 			name:        "error when name not provided",
@@ -263,6 +276,9 @@ func TestGetProfileStatusByName(t *testing.T) {
 			} else {
 				if result.IsError {
 					t.Errorf("expected success, got error: %s", getResultText(t, result))
+				}
+				if tt.checkReq != nil {
+					tt.checkReq(t, mockClient)
 				}
 			}
 		})
