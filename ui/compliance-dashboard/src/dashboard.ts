@@ -127,6 +127,9 @@ export function initDashboard(): void {
   // Set up ResizeObserver for Goose compatibility
   setupResizeObserver();
 
+  // Set up rule filter button handlers
+  setupRuleFilterHandlers();
+
   // Initialize MCP client
   mcpClient = new MCPAppsClient();
 
@@ -578,7 +581,7 @@ function renderProfiles(): void {
           </div>
         </div>
         <div class="expandable-content" data-content-id="${safeId}">
-          ${renderProfileRules(status)}
+          ${renderProfileRules(status, profile.id)}
         </div>
       `;
     })
@@ -598,7 +601,7 @@ function renderProfiles(): void {
 /**
  * Render profile rules for expanded view.
  */
-function renderProfileRules(status: ProfileStatusResult | undefined): string {
+function renderProfileRules(status: ProfileStatusResult | undefined, profileId: string): string {
   if (
     !status?.rule_evaluation_status ||
     status.rule_evaluation_status.length === 0
@@ -606,16 +609,28 @@ function renderProfileRules(status: ProfileStatusResult | undefined): string {
     return '<div class="empty-state">No rule evaluations</div>';
   }
 
+  const rules = status.rule_evaluation_status;
+  const failingCount = rules.filter(r => r.status === 'failure' || r.status === 'error').length;
+  const passingCount = rules.filter(r => r.status === 'success').length;
+  const safeProfileId = escapeAttr(profileId);
+
   return `
-    <div class="rule-list">
-      ${status.rule_evaluation_status
+    <div class="rule-filter-bar" data-filter-target="${safeProfileId}">
+      <button class="rule-filter-btn active" data-filter="all">All (${rules.length})</button>
+      <button class="rule-filter-btn" data-filter="failing">Failing (${failingCount})</button>
+      <button class="rule-filter-btn" data-filter="passing">Passing (${passingCount})</button>
+    </div>
+    <div class="rule-list" data-rules-list="${safeProfileId}">
+      ${rules
         .map((rule) => {
           const safeStatus = escapeAttr(rule.status || 'pending');
           const entityName = rule.entity_info?.name || 'Unknown entity';
           const entityType = rule.entity_info?.entity_type || 'entity';
+          const isFailing = rule.status === 'failure' || rule.status === 'error';
+          const isPassing = rule.status === 'success';
 
           return `
-          <div class="rule-item-detailed">
+          <div class="rule-item-detailed" data-rule-status="${isFailing ? 'failing' : isPassing ? 'passing' : 'other'}">
             <div class="rule-item-header">
               <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type_name || 'Unknown rule')}</span>
               <span class="status-badge ${safeStatus}">
@@ -771,7 +786,7 @@ function renderRepositories(): void {
           </div>
         </div>
         <div class="expandable-content" data-repo-content="${safeRepoId}">
-          ${renderRepoRules(rules)}
+          ${renderRepoRules(rules, repoName)}
         </div>
       `;
     })
@@ -791,18 +806,30 @@ function renderRepositories(): void {
 /**
  * Render rules for a repository's expanded view.
  */
-function renderRepoRules(rules: RuleEvaluationStatus[] | undefined): string {
+function renderRepoRules(rules: RuleEvaluationStatus[] | undefined, repoId: string): string {
   if (!rules || rules.length === 0) {
     return '<div class="empty-state">No rule evaluations for this repository</div>';
   }
 
+  const failingCount = rules.filter(r => r.status === 'failure' || r.status === 'error').length;
+  const passingCount = rules.filter(r => r.status === 'success').length;
+  const safeRepoId = escapeAttr(repoId);
+
   return `
-    <div class="rule-list">
+    <div class="rule-filter-bar" data-filter-target="${safeRepoId}">
+      <button class="rule-filter-btn active" data-filter="all">All (${rules.length})</button>
+      <button class="rule-filter-btn" data-filter="failing">Failing (${failingCount})</button>
+      <button class="rule-filter-btn" data-filter="passing">Passing (${passingCount})</button>
+    </div>
+    <div class="rule-list" data-rules-list="${safeRepoId}">
       ${rules
         .map((rule) => {
           const safeStatus = escapeAttr(rule.status || 'pending');
+          const isFailing = rule.status === 'failure' || rule.status === 'error';
+          const isPassing = rule.status === 'success';
+
           return `
-          <div class="rule-item-detailed">
+          <div class="rule-item-detailed" data-rule-status="${isFailing ? 'failing' : isPassing ? 'passing' : 'other'}">
             <div class="rule-item-header">
               <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type_name || 'Unknown rule')}</span>
               <span class="status-badge ${safeStatus}">
@@ -833,6 +860,47 @@ function toggleRepoExpand(repoId: string): void {
     content.classList.toggle('expanded');
     chevron.classList.toggle('expanded');
   }
+}
+
+/**
+ * Set up event delegation for rule filter buttons.
+ */
+function setupRuleFilterHandlers(): void {
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const filterBtn = target.closest('.rule-filter-btn') as HTMLElement | null;
+
+    if (!filterBtn) return;
+
+    const filterBar = filterBtn.closest('.rule-filter-bar') as HTMLElement | null;
+    if (!filterBar) return;
+
+    const targetId = filterBar.dataset.filterTarget;
+    if (!targetId) return;
+
+    const filterValue = filterBtn.dataset.filter;
+    if (!filterValue) return;
+
+    // Update active button
+    filterBar.querySelectorAll('.rule-filter-btn').forEach((btn) => {
+      btn.classList.remove('active');
+    });
+    filterBtn.classList.add('active');
+
+    // Filter rules
+    const rulesList = document.querySelector(`[data-rules-list="${CSS.escape(targetId)}"]`);
+    if (!rulesList) return;
+
+    rulesList.querySelectorAll('.rule-item-detailed').forEach((item) => {
+      const ruleStatus = (item as HTMLElement).dataset.ruleStatus;
+      const shouldShow =
+        filterValue === 'all' ||
+        (filterValue === 'failing' && ruleStatus === 'failing') ||
+        (filterValue === 'passing' && ruleStatus === 'passing');
+
+      (item as HTMLElement).style.display = shouldShow ? '' : 'none';
+    });
+  });
 }
 
 /**
