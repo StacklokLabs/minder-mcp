@@ -6,12 +6,33 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
+	"net"
 	"strings"
 	"testing"
 	"time"
+
+	minderv1 "github.com/mindersec/minder/pkg/api/protobuf/go/minder/v1"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
+
+// mockUserService is a mock gRPC server for testing realm URL discovery.
+type mockUserService struct {
+	minderv1.UnimplementedUserServiceServer
+	realmURL string
+}
+
+func (m *mockUserService) GetUser(ctx context.Context, _ *minderv1.GetUserRequest) (*minderv1.GetUserResponse, error) {
+	if m.realmURL != "" {
+		_ = grpc.SendHeader(ctx, metadata.New(map[string]string{
+			"www-authenticate": fmt.Sprintf(`Bearer realm="%s"`, m.realmURL),
+		}))
+	}
+	return nil, status.Error(codes.Unauthenticated, "unauthenticated")
+}
 
 func TestNewTokenRefresher(t *testing.T) {
 	t.Parallel()
@@ -170,24 +191,27 @@ func TestExtractRealmFromWWWAuthenticate(t *testing.T) {
 func TestDiscoverRealmURL(t *testing.T) {
 	t.Parallel()
 
-	// Create a test server that returns WWW-Authenticate header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="https://auth.example.com/realms/test"`)
-		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer server.Close()
+	// Start a mock gRPC server that returns www-authenticate header
+	lis, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
 
-	// Parse server URL to get host and port
-	host := strings.TrimPrefix(server.URL, "http://")
-	parts := strings.Split(host, ":")
-	if len(parts) != 2 {
-		t.Fatalf("unexpected server URL format: %s", server.URL)
-	}
+	srv := grpc.NewServer()
+	minderv1.RegisterUserServiceServer(srv, &mockUserService{
+		realmURL: "https://auth.example.com/realms/test",
+	})
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+	defer srv.Stop()
+
+	// Parse listener address to get host and port
+	addr := lis.Addr().String()
+	parts := strings.Split(addr, ":")
+	require.Len(t, parts, 2, "unexpected listener address format: %s", addr)
 
 	var port int
-	if _, err := fmt.Sscanf(parts[1], "%d", &port); err != nil {
-		t.Fatalf("failed to parse port: %v", err)
-	}
+	_, err = fmt.Sscanf(parts[1], "%d", &port)
+	require.NoError(t, err)
 
 	refresher := NewTokenRefresher()
 	defer refresher.Close()
@@ -199,66 +223,33 @@ func TestDiscoverRealmURL(t *testing.T) {
 	}
 
 	realmURL, err := refresher.discoverRealmURL(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if realmURL != "https://auth.example.com/realms/test" {
-		t.Errorf("realmURL = %q, want %q", realmURL, "https://auth.example.com/realms/test")
-	}
-}
-
-func TestDiscoverRealmURL_GrpcMetadataHeader(t *testing.T) {
-	t.Parallel()
-
-	// Create a test server that returns both headers (like real gRPC-gateway)
-	// The grpc-metadata header has the correct realm, the www-authenticate has garbage
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Grpc-Metadata-Www-Authenticate", `Bearer realm="https://auth.example.com/realms/test"`)
-		w.Header().Set("WWW-Authenticate", `Unauthenticated indicates the request does not have valid credentials`)
-		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer server.Close()
-
-	host := strings.TrimPrefix(server.URL, "http://")
-	parts := strings.Split(host, ":")
-	var port int
-	if _, err := fmt.Sscanf(parts[1], "%d", &port); err != nil {
-		t.Fatalf("failed to parse port: %v", err)
-	}
-
-	refresher := NewTokenRefresher()
-	defer refresher.Close()
-
-	cfg := ServerConfig{
-		Host:     parts[0],
-		Port:     port,
-		Insecure: true,
-	}
-
-	realmURL, err := refresher.discoverRealmURL(context.Background(), cfg)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if realmURL != "https://auth.example.com/realms/test" {
-		t.Errorf("realmURL = %q, want %q", realmURL, "https://auth.example.com/realms/test")
-	}
+	require.NoError(t, err)
+	require.Equal(t, "https://auth.example.com/realms/test", realmURL)
 }
 
 func TestDiscoverRealmURL_NoHeader(t *testing.T) {
 	t.Parallel()
 
-	// Create a test server that doesn't return WWW-Authenticate header
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer server.Close()
+	// Start a mock gRPC server that doesn't return www-authenticate header
+	lis, err := net.Listen("tcp", "localhost:0")
+	require.NoError(t, err)
 
-	host := strings.TrimPrefix(server.URL, "http://")
-	parts := strings.Split(host, ":")
+	srv := grpc.NewServer()
+	minderv1.RegisterUserServiceServer(srv, &mockUserService{
+		realmURL: "", // Empty realm URL means no header will be sent
+	})
+	go func() {
+		_ = srv.Serve(lis)
+	}()
+	defer srv.Stop()
+
+	addr := lis.Addr().String()
+	parts := strings.Split(addr, ":")
+	require.Len(t, parts, 2)
+
 	var port int
-	if _, err := fmt.Sscanf(parts[1], "%d", &port); err != nil {
-		t.Fatalf("failed to parse port: %v", err)
-	}
+	_, err = fmt.Sscanf(parts[1], "%d", &port)
+	require.NoError(t, err)
 
 	refresher := NewTokenRefresher()
 	defer refresher.Close()
@@ -269,14 +260,10 @@ func TestDiscoverRealmURL_NoHeader(t *testing.T) {
 		Insecure: true,
 	}
 
-	_, err := refresher.discoverRealmURL(context.Background(), cfg)
-	if err == nil {
-		t.Error("expected error when no WWW-Authenticate header")
-	}
+	_, err = refresher.discoverRealmURL(context.Background(), cfg)
+	require.Error(t, err)
 	// Check the error message contains useful information
-	if !strings.Contains(err.Error(), "authentication realm") {
-		t.Errorf("error should mention authentication realm, got: %v", err)
-	}
+	require.Contains(t, err.Error(), "www-authenticate")
 }
 
 func TestValidateRealmURL(t *testing.T) {
@@ -286,36 +273,83 @@ func TestValidateRealmURL(t *testing.T) {
 	defer refresher.Close()
 
 	tests := []struct {
-		name      string
-		realmURL  string
-		wantError bool
+		name         string
+		realmURL     string
+		expectedHost string
+		wantError    bool
 	}{
 		{
-			name:      "valid https URL",
-			realmURL:  "https://auth.example.com/realms/test",
-			wantError: false,
+			name:         "valid https URL with related host",
+			realmURL:     "https://auth.example.com/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    false,
 		},
 		{
-			name:      "valid http URL",
-			realmURL:  "http://localhost:8080/realms/test",
-			wantError: false,
+			name:         "valid http URL for localhost",
+			realmURL:     "http://localhost:8080/realms/test",
+			expectedHost: "localhost",
+			wantError:    false,
 		},
 		{
-			name:      "invalid scheme",
-			realmURL:  "ftp://auth.example.com/realms/test",
-			wantError: true,
+			name:         "valid http URL for 127.0.0.1",
+			realmURL:     "http://127.0.0.1:8080/realms/test",
+			expectedHost: "127.0.0.1",
+			wantError:    false,
 		},
 		{
-			name:      "invalid URL",
-			realmURL:  "not a url",
-			wantError: true,
+			name:         "http not allowed for non-localhost",
+			realmURL:     "http://auth.example.com/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    true,
+		},
+		{
+			name:         "invalid scheme",
+			realmURL:     "ftp://auth.example.com/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    true,
+		},
+		{
+			name:         "invalid URL",
+			realmURL:     "not a url",
+			expectedHost: "example.com",
+			wantError:    true,
+		},
+		{
+			name:         "URL with embedded credentials rejected",
+			realmURL:     "https://user:pass@auth.example.com/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    true,
+		},
+		{
+			name:         "private IP address rejected",
+			realmURL:     "https://192.168.1.1/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    true,
+		},
+		{
+			name:         "link-local IP rejected",
+			realmURL:     "https://169.254.1.1/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    true,
+		},
+		{
+			name:         "unrelated host rejected",
+			realmURL:     "https://auth.attacker.com/realms/test",
+			expectedHost: "api.example.com",
+			wantError:    true,
+		},
+		{
+			name:         "same base domain allowed",
+			realmURL:     "https://auth.stacklok.com/realms/test",
+			expectedHost: "api.stacklok.com",
+			wantError:    false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := refresher.validateRealmURL(tt.realmURL, "example.com")
+			err := refresher.validateRealmURL(tt.realmURL, tt.expectedHost)
 			if tt.wantError && err == nil {
 				t.Error("expected error but got none")
 			}

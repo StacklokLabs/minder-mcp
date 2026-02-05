@@ -3,9 +3,12 @@ package minder
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,7 +16,14 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	minderv1 "github.com/mindersec/minder/pkg/api/protobuf/go/minder/v1"
 	"golang.org/x/oauth2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -26,6 +36,12 @@ const (
 
 	// offlineTokenType is the Keycloak-specific token type claim for offline/refresh tokens.
 	offlineTokenType = "Offline"
+
+	// maxRedirects is the maximum number of HTTP redirects to follow.
+	maxRedirects = 3
+
+	// maxWWWAuthHeaderLen is the maximum length of WWW-Authenticate header to parse.
+	maxWWWAuthHeaderLen = 2048
 )
 
 // Sentinel errors for programmatic error handling.
@@ -79,7 +95,16 @@ func NewTokenRefresher() *TokenRefresher {
 	return &TokenRefresher{
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
+			CheckRedirect: func(_ *http.Request, via []*http.Request) error {
+				if len(via) >= maxRedirects {
+					return errors.New("too many redirects")
+				}
+				return nil
+			},
 			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					MinVersion: tls.VersionTLS13,
+				},
 				MaxIdleConns:        10,
 				MaxIdleConnsPerHost: 5,
 				IdleConnTimeout:     90 * time.Second,
@@ -149,11 +174,9 @@ func (t *TokenRefresher) getOrRefreshToken(
 	refreshToken string,
 	cfg ServerConfig,
 ) (string, error) {
-	// Create a cache key from the refresh token (use first 32 chars to avoid storing full token)
-	cacheKey := refreshToken
-	if len(cacheKey) > 32 {
-		cacheKey = cacheKey[:32]
-	}
+	// Create a cache key from the refresh token using SHA256 hash
+	// This avoids storing the full token and prevents cache collisions
+	cacheKey := hashToken(refreshToken)
 
 	// Check cache first (read lock)
 	t.mu.RLock()
@@ -266,6 +289,13 @@ func (*TokenRefresher) wrapOAuthError(err error) error {
 	return fmt.Errorf("%w: %v", ErrRefreshFailed, err)
 }
 
+// hashToken creates a SHA256 hash of a token for use as a cache key.
+// This avoids storing the full token in memory and prevents cache collisions.
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:16]) // Use first 16 bytes (128 bits)
+}
+
 // validateRealmURL validates that the discovered realm URL is trusted.
 // This prevents SSRF attacks where a malicious server could redirect token requests.
 func (*TokenRefresher) validateRealmURL(realmURL string, expectedHost string) error {
@@ -274,20 +304,112 @@ func (*TokenRefresher) validateRealmURL(realmURL string, expectedHost string) er
 		return fmt.Errorf("invalid URL format: %w", err)
 	}
 
-	// Validate scheme
-	if parsedRealm.Scheme != "http" && parsedRealm.Scheme != "https" {
-		return fmt.Errorf("invalid scheme: %s", parsedRealm.Scheme)
+	// Validate scheme - require HTTPS except for localhost
+	host := parsedRealm.Hostname()
+	if parsedRealm.Scheme == "http" {
+		if !isLocalhostHost(host) {
+			return fmt.Errorf("http scheme only allowed for localhost, got host: %s", host)
+		}
+	} else if parsedRealm.Scheme != "https" {
+		return fmt.Errorf("invalid scheme: %s (https required)", parsedRealm.Scheme)
 	}
 
-	// For security, we could add additional validation here:
-	// - Allowlist of known auth server domains
-	// - Check that realm URL host matches expected IdP
-	// For now, we validate that it's a valid URL with http/https scheme.
-	// The ultimate validation happens at the OAuth server.
+	// Reject URLs with embedded credentials (userinfo)
+	if parsedRealm.User != nil {
+		return errors.New("realm URL must not contain credentials")
+	}
 
-	_ = expectedHost // Reserved for future allowlist validation
+	// Validate host is present
+	if host == "" {
+		return errors.New("realm URL must have a valid host")
+	}
+
+	// Block private/reserved IP addresses to prevent SSRF
+	// Skip this check for localhost (allowed for development)
+	if !isLocalhostHost(host) && isPrivateOrReservedHost(host) {
+		return fmt.Errorf("realm URL points to private/reserved address: %s", host)
+	}
+
+	// Verify the realm URL host is related to the expected server host.
+	// This provides defense-in-depth by ensuring the auth server is in a
+	// similar domain to the Minder server (e.g., both under stacklok.com).
+	if !isRelatedHost(host, expectedHost) {
+		return fmt.Errorf("realm host %q not related to expected host %q", host, expectedHost)
+	}
 
 	return nil
+}
+
+// isLocalhostHost checks if a host is localhost or a loopback address.
+func isLocalhostHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// isPrivateOrReservedHost checks if a host resolves to a private or reserved IP address.
+func isPrivateOrReservedHost(host string) bool {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		// It's a hostname, not an IP - we allow hostnames as they will be
+		// resolved by the HTTP client and validated by TLS certificate verification.
+		// Direct IP addresses are more dangerous for SSRF.
+		return false
+	}
+
+	// Block loopback, private, link-local, and other reserved ranges
+	return ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsUnspecified()
+}
+
+// isRelatedHost checks if the realm host is related to the expected server host.
+// This provides defense-in-depth by ensuring auth servers are in similar domains.
+func isRelatedHost(realmHost, expectedHost string) bool {
+	// Normalize hosts to lowercase
+	realmHost = strings.ToLower(realmHost)
+	expectedHost = strings.ToLower(expectedHost)
+
+	// Extract base domains (last two parts for common TLDs)
+	realmBase := getBaseDomain(realmHost)
+	expectedBase := getBaseDomain(expectedHost)
+
+	// Allow if base domains match (e.g., auth.stacklok.com and api.stacklok.com)
+	if realmBase == expectedBase && realmBase != "" {
+		return true
+	}
+
+	// Allow localhost for development
+	if isLocalhostHost(realmHost) && isLocalhostHost(expectedHost) {
+		return true
+	}
+
+	// Allow if realm host contains expected host or vice versa
+	// This handles cases like expected=api.example.com, realm=auth.example.com
+	if strings.HasSuffix(realmHost, "."+expectedBase) || strings.HasSuffix(expectedHost, "."+realmBase) {
+		return true
+	}
+
+	return false
+}
+
+// getBaseDomain extracts the base domain (last two parts) from a hostname.
+// For example: "auth.stacklok.com" -> "stacklok.com"
+func getBaseDomain(host string) string {
+	// Remove port if present
+	if idx := strings.LastIndex(host, ":"); idx != -1 {
+		host = host[:idx]
+	}
+
+	parts := strings.Split(host, ".")
+	if len(parts) < 2 {
+		return host
+	}
+	return strings.Join(parts[len(parts)-2:], ".")
 }
 
 // getRealmURL returns a cached realm URL or discovers it from the server.
@@ -311,54 +433,49 @@ func (t *TokenRefresher) getRealmURL(ctx context.Context, cfg ServerConfig) (str
 	return realmURL, nil
 }
 
-// discoverRealmURL discovers the Keycloak realm URL from the server's WWW-Authenticate header.
-func (t *TokenRefresher) discoverRealmURL(ctx context.Context, cfg ServerConfig) (string, error) {
-	// Build the server URL for an unauthenticated gRPC-gateway call
-	// Only use HTTP if explicitly configured as insecure
-	scheme := "https"
+// discoverRealmURL discovers the Keycloak realm URL from the server's www-authenticate gRPC metadata.
+func (*TokenRefresher) discoverRealmURL(ctx context.Context, cfg ServerConfig) (string, error) {
+	address := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+
+	// Set up dial options (TLS or insecure)
+	var opts []grpc.DialOption
 	if cfg.Insecure {
-		scheme = "http"
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS13,
+			ServerName: cfg.Host,
+		})))
 	}
 
-	// Try the /api/v1/user endpoint which requires auth and will return WWW-Authenticate
-	serverURL := fmt.Sprintf("%s://%s:%d/api/v1/user", scheme, cfg.Host, cfg.Port)
-
-	req, err := http.NewRequestWithContext(ctx, "GET", serverURL, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := t.httpClient.Do(req)
+	// Create unauthenticated connection
+	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
 		return "", fmt.Errorf("failed to connect: %w", err)
 	}
 	defer func() {
-		// Drain and close body to enable connection reuse
-		_, _ = io.Copy(io.Discard, resp.Body)
-		_ = resp.Body.Close()
+		_ = conn.Close()
 	}()
 
-	// Look for WWW-Authenticate header
-	// Check gRPC-gateway metadata header first (more reliable for gRPC services)
-	wwwAuth := resp.Header.Get("Grpc-Metadata-Www-Authenticate")
-	if wwwAuth == "" {
-		wwwAuth = resp.Header.Get("WWW-Authenticate")
-	}
-	if wwwAuth == "" {
-		return "", errors.New("server did not return authentication realm information")
+	// Call GetUser to trigger auth error with realm URL
+	client := minderv1.NewUserServiceClient(conn)
+	var headers metadata.MD
+	_, err = client.GetUser(ctx, &minderv1.GetUserRequest{}, grpc.Header(&headers))
+
+	// We expect Unauthenticated error
+	if status.Code(err) != codes.Unauthenticated {
+		return "", fmt.Errorf("unexpected response: %w", err)
 	}
 
-	// Parse the realm from the header
-	realmURL := extractRealmFromWWWAuthenticate(wwwAuth)
-	if realmURL == "" {
-		// Try the other header if the first one didn't have a valid realm
-		altHeader := resp.Header.Get("WWW-Authenticate")
-		if altHeader != "" && altHeader != wwwAuth {
-			realmURL = extractRealmFromWWWAuthenticate(altHeader)
-		}
+	// Extract realm from www-authenticate header
+	wwwAuth := headers.Get("www-authenticate")
+	if len(wwwAuth) == 0 || wwwAuth[0] == "" {
+		return "", errors.New("server did not return www-authenticate header")
 	}
+
+	realmURL := extractRealmFromWWWAuthenticate(wwwAuth[0])
 	if realmURL == "" {
-		return "", errors.New("could not parse authentication realm from server response")
+		return "", errors.New("could not parse realm from www-authenticate header")
 	}
 
 	return realmURL, nil
@@ -367,6 +484,11 @@ func (t *TokenRefresher) discoverRealmURL(ctx context.Context, cfg ServerConfig)
 // extractRealmFromWWWAuthenticate parses the realm URL from a WWW-Authenticate header.
 // Example header: Bearer realm="https://auth.stacklok.com/realms/stacklok"
 func extractRealmFromWWWAuthenticate(header string) string {
+	// Limit header length to prevent DoS
+	if len(header) > maxWWWAuthHeaderLen {
+		return ""
+	}
+
 	if !strings.HasPrefix(header, "Bearer ") {
 		return ""
 	}
