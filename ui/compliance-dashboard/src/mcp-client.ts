@@ -196,7 +196,9 @@ export class MCPAppsClient {
     if (projectId) {
       args.project_id = projectId;
     }
-    return this.callTool<ProfilesResult>('minder_list_profiles', args);
+    // API returns array directly, wrap it for dashboard
+    const profiles = await this.callTool<Profile[]>('minder_list_profiles', args);
+    return { profiles: Array.isArray(profiles) ? profiles : [] };
   }
 
   async getProfileStatus(options: {
@@ -214,10 +216,17 @@ export class MCPAppsClient {
     if (options.projectId) {
       args.project_id = options.projectId;
     }
-    return this.callTool<ProfileStatusResult>(
+    // API returns nested structure, flatten it for dashboard
+    const response = await this.callTool<ProfileStatusApiResponse>(
       'minder_get_profile_status',
       args
     );
+    return {
+      profile_id: response.profile_status?.profile_id ?? '',
+      profile_name: response.profile_status?.profile_name ?? '',
+      profile_status: response.profile_status?.profile_status ?? '',
+      rule_evaluation_status: response.rule_evaluation_status,
+    };
   }
 
   async listRepositories(options?: {
@@ -239,33 +248,59 @@ export class MCPAppsClient {
     if (options?.limit) {
       args.limit = options.limit;
     }
-    return this.callTool<RepositoriesResult>('minder_list_repositories', args);
+    // API returns { results: [...], has_more, next_cursor }
+    const response = await this.callTool<RepositoriesApiResponse>(
+      'minder_list_repositories',
+      args
+    );
+    return {
+      repositories: response.results ?? [],
+      cursor: response.next_cursor,
+    };
   }
 }
 
-// Type definitions for Minder data
+// Type definitions for Minder data - matching actual API responses
+
 export interface Profile {
   id: string;
   name: string;
   labels?: string[];
   context?: {
-    project_id?: string;
+    project?: string;
   };
 }
 
+// API returns array directly, this wraps it for dashboard use
 export interface ProfilesResult {
   profiles: Profile[];
 }
 
 export interface RuleEvaluationStatus {
   rule_name?: string;
-  rule_type?: string;
+  rule_type_name?: string;
   status: 'success' | 'failure' | 'error' | 'pending' | 'skipped';
-  entity_name?: string;
+  entity_info?: {
+    name?: string;
+    entity_type?: string;
+  };
   remediation_status?: string;
-  alert_status?: string;
+  alert?: {
+    status?: string;
+  };
 }
 
+// API returns nested structure with profile_status object
+export interface ProfileStatusApiResponse {
+  profile_status: {
+    profile_id: string;
+    profile_name: string;
+    profile_status: string;
+  };
+  rule_evaluation_status?: RuleEvaluationStatus[];
+}
+
+// Flattened version for dashboard use
 export interface ProfileStatusResult {
   profile_id: string;
   profile_name: string;
@@ -274,7 +309,7 @@ export interface ProfileStatusResult {
 }
 
 export interface Repository {
-  id: string;
+  id?: string;
   name: string;
   owner: string;
   provider?: string;
@@ -287,6 +322,14 @@ export interface Repository {
   default_branch?: string;
 }
 
+// API returns { results: [...], has_more: bool }
+export interface RepositoriesApiResponse {
+  results: Repository[];
+  has_more: boolean;
+  next_cursor?: string;
+}
+
+// Dashboard-friendly version
 export interface RepositoriesResult {
   repositories: Repository[];
   cursor?: string;

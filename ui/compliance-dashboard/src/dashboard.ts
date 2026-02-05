@@ -1,10 +1,10 @@
 import {
   MCPAppsClient,
   Profile,
-  ProfilesResult,
   ProfileStatusResult,
+  ProfileStatusApiResponse,
   Repository,
-  RepositoriesResult,
+  RepositoriesApiResponse,
   type ToolResultParams,
   type ToolInputParams,
 } from './mcp-client.js';
@@ -185,27 +185,36 @@ function handleToolResult(result: ToolResultParams): void {
   }
 
   // Try to identify the data type and update accordingly
-  if (isProfilesResult(data)) {
+  // API returns profiles as array directly
+  if (isProfilesArray(data)) {
     console.log(
       '[Dashboard] Received profiles data:',
-      data.profiles.length,
+      data.length,
       'profiles'
     );
-    profiles = data.profiles || [];
+    profiles = data;
     updateSummaryCards();
     renderProfiles();
-  } else if (isProfileStatusResult(data)) {
-    console.log('[Dashboard] Received profile status:', data.profile_name);
-    profileStatuses.set(data.profile_id, data);
+  // API returns profile status with nested profile_status object
+  } else if (isProfileStatusApiResponse(data)) {
+    const status: ProfileStatusResult = {
+      profile_id: data.profile_status.profile_id,
+      profile_name: data.profile_status.profile_name,
+      profile_status: data.profile_status.profile_status,
+      rule_evaluation_status: data.rule_evaluation_status,
+    };
+    console.log('[Dashboard] Received profile status:', status.profile_name);
+    profileStatuses.set(status.profile_id, status);
     updateSummaryCards();
     renderProfiles();
-  } else if (isRepositoriesResult(data)) {
+  // API returns repositories as { results: [...] }
+  } else if (isRepositoriesApiResponse(data)) {
     console.log(
       '[Dashboard] Received repositories data:',
-      data.repositories.length,
+      data.results.length,
       'repos'
     );
-    repositories = data.repositories || [];
+    repositories = data.results || [];
     updateSummaryCards();
     renderRepositories();
   } else {
@@ -214,38 +223,35 @@ function handleToolResult(result: ToolResultParams): void {
 }
 
 /**
- * Type guard for ProfilesResult
+ * Type guard for ProfilesResult - API returns array directly
  */
-function isProfilesResult(data: unknown): data is ProfilesResult {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'profiles' in data &&
-    Array.isArray((data as ProfilesResult).profiles)
+function isProfilesArray(data: unknown): data is Profile[] {
+  return Array.isArray(data) && data.every(item =>
+    typeof item === 'object' && item !== null && 'name' in item
   );
 }
 
 /**
- * Type guard for ProfileStatusResult
+ * Type guard for ProfileStatusApiResponse - API returns nested structure
  */
-function isProfileStatusResult(data: unknown): data is ProfileStatusResult {
+function isProfileStatusApiResponse(data: unknown): data is ProfileStatusApiResponse {
   return (
     typeof data === 'object' &&
     data !== null &&
-    'profile_id' in data &&
-    'profile_name' in data
+    'profile_status' in data &&
+    typeof (data as ProfileStatusApiResponse).profile_status === 'object'
   );
 }
 
 /**
- * Type guard for RepositoriesResult
+ * Type guard for RepositoriesApiResponse - API returns { results: [...] }
  */
-function isRepositoriesResult(data: unknown): data is RepositoriesResult {
+function isRepositoriesApiResponse(data: unknown): data is RepositoriesApiResponse {
   return (
     typeof data === 'object' &&
     data !== null &&
-    'repositories' in data &&
-    Array.isArray((data as RepositoriesResult).repositories)
+    'results' in data &&
+    Array.isArray((data as RepositoriesApiResponse).results)
   );
 }
 
@@ -323,9 +329,9 @@ async function loadDashboard(): Promise<void> {
     profileStatuses = new Map();
     const statusPromises = profiles.map(async (profile) => {
       try {
-        // Use project_id from profile context if available, or fall back to current context
+        // Use project from profile context if available, or fall back to current context
         const profileProjectId =
-          profile.context?.project_id ?? currentProjectId ?? undefined;
+          profile.context?.project ?? currentProjectId ?? undefined;
         const status = await client.getProfileStatus({
           name: profile.name,
           projectId: profileProjectId,
@@ -591,7 +597,7 @@ function renderProfileRules(status: ProfileStatusResult | undefined): string {
           const safeStatus = escapeAttr(rule.status || 'pending');
           return `
           <div class="rule-item">
-            <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type || 'Unknown rule')}</span>
+            <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type_name || 'Unknown rule')}</span>
             <span class="status-badge ${safeStatus}">
               <span class="status-dot ${safeStatus}"></span>
               ${escapeHtml(rule.status || 'pending')}
