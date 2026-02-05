@@ -12,6 +12,7 @@ import (
 	"github.com/stacklok/minder-mcp/internal/config"
 	"github.com/stacklok/minder-mcp/internal/middleware"
 	"github.com/stacklok/minder-mcp/internal/minder"
+	"github.com/stacklok/minder-mcp/internal/resources"
 )
 
 // Tools holds the tool handlers and configuration.
@@ -389,14 +390,20 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.wrapHandler("minder_list_evaluation_history", t.listEvaluationHistory))
 
-	// Dashboard
-	s.AddTool(mcp.NewTool("minder_show_dashboard",
+	// Dashboard - includes _meta.ui.resourceUri for MCP Apps support
+	dashboardTool := mcp.NewTool("minder_show_dashboard",
 		mcp.WithDescription("Display the Minder Compliance Dashboard - an interactive visual interface "+
 			"showing repository security posture, profile compliance status, and evaluation history "+
 			"across all monitored repositories"),
 		mcp.WithTitleAnnotation("Show Compliance Dashboard"),
 		mcp.WithReadOnlyHintAnnotation(true),
-	), t.wrapHandler("minder_show_dashboard", t.showComplianceDashboard))
+	)
+	dashboardTool.Meta = mcp.NewMetaFromMap(map[string]any{
+		"ui": map[string]any{
+			"resourceUri": resources.DashboardURI,
+		},
+	})
+	s.AddTool(dashboardTool, t.wrapHandler("minder_show_dashboard", t.showComplianceDashboard))
 }
 
 // getClient returns a MinderClient using the configured factory.
