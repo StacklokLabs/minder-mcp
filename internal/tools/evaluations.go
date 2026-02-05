@@ -32,6 +32,7 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 	toStr := req.GetString("to", "")
 	cursor := req.GetString("cursor", "")
 	pageSize := req.GetInt("page_size", 0)
+	labelFilter := req.GetString("label_filter", "*") // Default to "*" to include all profiles
 
 	reqProto := &minderv1.ListEvaluationHistoryRequest{}
 
@@ -63,6 +64,10 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 
 	if alertStatus != "" {
 		reqProto.Alert = []string{alertStatus}
+	}
+
+	if labelFilter != "" {
+		reqProto.LabelFilter = []string{labelFilter}
 	}
 
 	if fromStr != "" {

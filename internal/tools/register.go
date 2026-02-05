@@ -378,6 +378,11 @@ func (t *Tools) Register(s *server.MCPServer) {
 			mcp.Min(1),
 			mcp.Max(100),
 		),
+		mcp.WithString("label_filter",
+			mcp.Title("Label Filter"),
+			mcp.Description("Filter by profile labels. '*' includes all (default), "+
+				"empty for unlabeled only. Prefix with '!' to exclude (e.g., '!system')."),
+		),
 	), t.wrapHandler("minder_list_evaluation_history", t.listEvaluationHistory))
 }
 
