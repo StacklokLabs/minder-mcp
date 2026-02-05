@@ -49,7 +49,7 @@ func main() {
 	t.Register(mcpServer)
 
 	// Register resources (including compliance dashboard)
-	resources.Register(mcpServer)
+	resources.New(logger).Register(mcpServer)
 
 	// Create HTTP context function that extracts auth token
 	authContextFunc := func(ctx context.Context, r *http.Request) context.Context {

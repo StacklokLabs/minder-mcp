@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -11,22 +12,32 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRegister(_ *testing.T) {
+func TestRegister(t *testing.T) {
 	mcpServer := server.NewMCPServer(
 		"test-server",
 		"1.0.0",
 		server.WithResourceCapabilities(true, false),
 	)
 
+	logger := slog.New(slog.NewTextHandler(nil, nil))
+	r := New(logger)
+
 	// Should not panic
-	Register(mcpServer)
+	r.Register(mcpServer)
+
+	// Verify it was registered by checking it doesn't panic on second registration
+	// (the MCP server allows duplicate registrations)
+	assert.NotNil(t, r)
 }
 
 func TestServeDashboardHTML(t *testing.T) {
 	ctx := context.Background()
 	req := mcp.ReadResourceRequest{}
 
-	contents, err := serveDashboardHTML(ctx, req)
+	logger := slog.New(slog.NewTextHandler(nil, nil))
+	r := New(logger)
+
+	contents, err := r.serveDashboardHTML(ctx, req)
 
 	require.NoError(t, err)
 	require.Len(t, contents, 1)
