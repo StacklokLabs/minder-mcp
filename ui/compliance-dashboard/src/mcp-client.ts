@@ -26,6 +26,21 @@ export type ToolResultCallback = (result: ToolResultParams) => void;
 export type ToolInputCallback = (input: ToolInputParams) => void;
 
 /**
+ * Container dimensions from the host.
+ */
+export interface ContainerDimensions {
+  width?: number;
+  height?: number;
+  maxWidth?: number;
+  maxHeight?: number;
+}
+
+/**
+ * Callback type for receiving container dimension changes from host.
+ */
+export type DimensionsCallback = (dimensions: ContainerDimensions) => void;
+
+/**
  * MCP Apps client for communicating with the MCP server from a UI iframe.
  * Uses the official @modelcontextprotocol/ext-apps SDK for secure communication.
  */
@@ -34,6 +49,7 @@ export class MCPAppsClient {
   private connected = false;
   private onToolResultCallback: ToolResultCallback | null = null;
   private onToolInputCallback: ToolInputCallback | null = null;
+  private onDimensionsCallback: DimensionsCallback | null = null;
 
   constructor() {
     this.app = new App({
@@ -66,6 +82,21 @@ export class MCPAppsClient {
       console.log('[MCP] Received tool input notification:', input);
       if (this.onToolInputCallback) {
         this.onToolInputCallback(input);
+      }
+    };
+  }
+
+  /**
+   * Register a callback for container dimension changes from the host.
+   * Called when the host resizes the iframe container.
+   */
+  onDimensionsChange(callback: DimensionsCallback): void {
+    this.onDimensionsCallback = callback;
+    this.app.onhostcontextchanged = (context) => {
+      console.log('[MCP] Received host context change:', context);
+      if (context.containerDimensions && this.onDimensionsCallback) {
+        const dims = context.containerDimensions as ContainerDimensions;
+        this.onDimensionsCallback(dims);
       }
     };
   }
