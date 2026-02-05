@@ -391,6 +391,13 @@ func (t *Tools) getClient(ctx context.Context) (MinderClient, error) {
 func (t *Tools) defaultClientFactory(ctx context.Context) (MinderClient, error) {
 	token := middleware.TokenFromContext(ctx)
 
+	// Log token status for debugging
+	if token == "" {
+		t.logger.WarnContext(ctx, "no authentication token provided",
+			"hint", "set MINDER_AUTH_TOKEN or pass Authorization header")
+		return nil, fmt.Errorf("no authentication token: set MINDER_AUTH_TOKEN environment variable or pass Authorization header")
+	}
+
 	serverCfg := minder.ServerConfig{
 		Host:     t.cfg.Minder.Host,
 		Port:     t.cfg.Minder.Port,
@@ -400,8 +407,16 @@ func (t *Tools) defaultClientFactory(ctx context.Context) (MinderClient, error) 
 	// Validate and potentially refresh the token
 	validToken, err := t.tokenRefresher.GetValidAccessToken(ctx, token, serverCfg)
 	if err != nil {
+		t.logger.ErrorContext(ctx, "token validation failed",
+			"error", err,
+			"server_host", t.cfg.Minder.Host,
+			"server_port", t.cfg.Minder.Port,
+			"insecure", t.cfg.Minder.Insecure,
+		)
 		return nil, fmt.Errorf("token validation failed: %w", err)
 	}
+
+	t.logger.DebugContext(ctx, "token validated successfully")
 
 	return minder.NewClient(minder.ClientConfig{
 		Host:     t.cfg.Minder.Host,
