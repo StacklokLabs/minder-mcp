@@ -4,6 +4,12 @@ vars:
   BINARY_NAME: minder-mcp
   BUILD_DIR: bin
   UI_DIR: ui/compliance-dashboard
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "unknown"
+  BUILD_TIME:
+    sh: date -u '+%Y-%m-%dT%H:%M:%SZ'
 
 tasks:
   default:
@@ -11,97 +17,220 @@ tasks:
     cmds:
       - task: build
 
+  # ============================================================
+  # Build
+  # ============================================================
+
   build:
-    desc: Build the minder-mcp binary (includes UI build)
+    desc: Build everything (Go binary + UI)
     deps:
       - build:ui
     cmds:
-      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd/minder-mcp
+      - mkdir -p {{.BUILD_DIR}}
+      - >-
+        go build
+        -ldflags="-X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.buildTime={{.BUILD_TIME}}"
+        -o {{.BUILD_DIR}}/{{.BINARY_NAME}}
+        ./cmd/minder-mcp
     sources:
       - '**/*.go'
       - go.mod
       - go.sum
-      - internal/resources/dist/index.html
+      - internal/resources/dist/**/*
     generates:
       - '{{.BUILD_DIR}}/{{.BINARY_NAME}}'
 
   build:ui:
     desc: Build the compliance dashboard UI
     dir: '{{.UI_DIR}}'
+    deps:
+      - deps:ui
     cmds:
-      - npm ci
       - npm run build
     sources:
       - 'src/**/*'
       - 'index.html'
-      - 'package.json'
       - 'vite.config.ts'
       - 'tsconfig.json'
     generates:
       - '../../internal/resources/dist/index.html'
 
-  lint:ui:
-    desc: Lint the compliance dashboard UI
+  # ============================================================
+  # Dependencies
+  # ============================================================
+
+  deps:ui:
+    desc: Install UI dependencies
     dir: '{{.UI_DIR}}'
     cmds:
-      - npm ci
-      - npm run lint
-      - npm run typecheck
-
-  test:
-    desc: Run tests
-    cmds:
-      - go test -v -race ./...
-
-  test:coverage:
-    desc: Run tests with coverage
-    cmds:
-      - go test -v -race -coverprofile=coverage.out ./...
-      - go tool cover -html=coverage.out -o coverage.html
-
-  lint:
-    desc: Run golangci-lint
-    cmds:
-      - golangci-lint run ./...
-
-  lint:fix:
-    desc: Run golangci-lint with auto-fix
-    cmds:
-      - golangci-lint run --fix ./...
-
-  lint:all:
-    desc: Run all linters (Go and UI)
-    cmds:
-      - task: lint
-      - task: lint:ui
-
-  fmt:
-    desc: Format code
-    cmds:
-      - gofmt -s -w .
-      - gci write --skip-generated -s standard -s default -s "prefix(github.com/stacklok/minder-mcp)" .
-
-  clean:
-    desc: Clean build artifacts
-    cmds:
-      - rm -rf {{.BUILD_DIR}}
-      - rm -f coverage.out coverage.html
-      - rm -rf internal/resources/dist
-      - rm -rf {{.UI_DIR}}/node_modules
+      - npm install
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
 
   tidy:
     desc: Run go mod tidy
     cmds:
       - go mod tidy
 
+  # ============================================================
+  # Testing
+  # ============================================================
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v -race ./...
+
+  test:short:
+    desc: Run tests without verbose output
+    cmds:
+      - go test -race ./...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -v -race -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+    generates:
+      - coverage.out
+      - coverage.html
+
+  # ============================================================
+  # Linting
+  # ============================================================
+
+  lint:
+    desc: Lint everything (Go + UI)
+    deps:
+      - lint:go
+      - lint:ui
+
+  lint:go:
+    desc: Lint Go code
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+    cmds:
+      - golangci-lint run ./...
+
+  lint:go:fix:
+    desc: Lint Go code with auto-fix
+    preconditions:
+      - sh: command -v golangci-lint
+        msg: "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+    cmds:
+      - golangci-lint run --fix ./...
+
+  lint:ui:
+    desc: Lint UI code (ESLint + TypeScript)
+    dir: '{{.UI_DIR}}'
+    deps:
+      - deps:ui
+    cmds:
+      - npm run lint
+      - npm run typecheck
+
+  # ============================================================
+  # Formatting
+  # ============================================================
+
+  fmt:
+    desc: Format everything (Go + UI)
+    cmds:
+      - task: fmt:go
+      - task: fmt:ui
+
+  fmt:go:
+    desc: Format Go code
+    preconditions:
+      - sh: command -v gci
+        msg: "gci not found. Install: go install github.com/daixiang0/gci@latest"
+    cmds:
+      - gofmt -s -w .
+      - gci write --skip-generated -s standard -s default -s "prefix(github.com/stacklok/minder-mcp)" .
+
+  fmt:ui:
+    desc: Format UI code (Prettier)
+    dir: '{{.UI_DIR}}'
+    deps:
+      - deps:ui
+    cmds:
+      - npm run format
+
+  # ============================================================
+  # Development
+  # ============================================================
+
   run:
-    desc: Run the MCP server
+    desc: Run the MCP server (via go run)
     cmds:
       - go run ./cmd/minder-mcp
 
-  all:
-    desc: Run lint, test, and build
+  dev:
+    desc: Run server with auto-rebuild on changes (requires air)
+    deps:
+      - build:ui
+    preconditions:
+      - sh: command -v air
+        msg: "air not found. Install: go install github.com/air-verse/air@latest"
+    cmds:
+      - air
+    interactive: true
+
+  dev:ui:
+    desc: Run UI dev server with hot reload
+    dir: '{{.UI_DIR}}'
+    deps:
+      - deps:ui
+    cmds:
+      - npm run dev
+    interactive: true
+
+  # ============================================================
+  # CI / Verification
+  # ============================================================
+
+  check:
+    desc: Run all checks (lint + test + build)
     cmds:
       - task: lint
       - task: test
       - task: build
+
+  ci:
+    desc: Run CI pipeline (lint + test with coverage + build)
+    cmds:
+      - task: lint
+      - task: test:coverage
+      - task: build
+    env:
+      CI: "true"
+
+  # ============================================================
+  # Cleanup
+  # ============================================================
+
+  clean:
+    desc: Clean build artifacts (keeps node_modules)
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.out coverage.html
+      - rm -rf internal/resources/dist
+
+  clean:all:
+    desc: Clean everything including node_modules
+    cmds:
+      - task: clean
+      - rm -rf {{.UI_DIR}}/node_modules
+
+  # ============================================================
+  # Utilities
+  # ============================================================
+
+  version:
+    desc: Show version information
+    cmds:
+      - echo "Version {{.VERSION}} ({{.COMMIT}}) built {{.BUILD_TIME}}"

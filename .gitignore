@@ -32,3 +32,6 @@ offline.token
 
 # Node.js (UI build)
 node_modules/
+
+# Generated UI bundle (built from ui/compliance-dashboard)
+internal/resources/dist/

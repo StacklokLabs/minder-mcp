@@ -6,6 +6,15 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Run weekly on Sundays at midnight
 
+# TODO: Add security-events: write permission when repo is public
+# to enable uploading SARIF results to GitHub Security tab
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   trivy-scan:
     name: Trivy Security Scan
