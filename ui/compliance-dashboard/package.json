@@ -16,7 +16,7 @@
     "@modelcontextprotocol/ext-apps": "^1.0.1"
   },
   "devDependencies": {
-    "@types/node": "^22.15.3",
+    "@types/node": "^24.0.0",
     "eslint": "^9.18.0",
     "globals": "^16.0.0",
     "prettier": "^3.4.2",
