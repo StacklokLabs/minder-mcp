@@ -131,6 +131,31 @@ export class MCPAppsClient {
     this.connected = false;
   }
 
+  /**
+   * Send a message to the chat from the dashboard.
+   * This allows the dashboard to communicate back to the conversation.
+   *
+   * @param text - The message text to send
+   * @returns True if the message was accepted, false if rejected by host
+   */
+  async sendMessage(text: string): Promise<boolean> {
+    if (!this.connected) {
+      console.warn('[MCP] Cannot send message: not connected');
+      return false;
+    }
+
+    try {
+      const result = await this.app.sendMessage({
+        role: 'user',
+        content: [{ type: 'text', text }],
+      });
+      return !result.isError;
+    } catch (error) {
+      console.error('[MCP] Failed to send message:', error);
+      return false;
+    }
+  }
+
   async callTool<T = unknown>(
     name: string,
     args: Record<string, unknown> = {}
