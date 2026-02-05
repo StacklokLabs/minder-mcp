@@ -28,11 +28,11 @@ func NewClient(cfg ClientConfig) (*Client, error) {
 	address := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 
 	opts := []grpc.DialOption{
-		grpc.WithPerRPCCredentials(NewJWTTokenCredentials(cfg.Token)),
+		grpc.WithPerRPCCredentials(NewJWTTokenCredentials(cfg.Token, cfg.Insecure)),
 	}
 
-	// Add transport credentials
-	if cfg.Insecure || cfg.Host == "localhost" || cfg.Host == "127.0.0.1" || cfg.Host == "::1" {
+	// Add transport credentials - only use insecure when explicitly configured
+	if cfg.Insecure {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{

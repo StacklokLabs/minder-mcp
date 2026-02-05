@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -15,14 +16,19 @@ import (
 
 // Tools holds the tool handlers and configuration.
 type Tools struct {
-	cfg           *config.Config
-	clientFactory ClientFactory
-	logger        *slog.Logger
+	cfg            *config.Config
+	clientFactory  ClientFactory
+	logger         *slog.Logger
+	tokenRefresher *minder.TokenRefresher
 }
 
 // New creates a new Tools instance with the default client factory.
 func New(cfg *config.Config, logger *slog.Logger) *Tools {
-	t := &Tools{cfg: cfg, logger: logger}
+	t := &Tools{
+		cfg:            cfg,
+		logger:         logger,
+		tokenRefresher: minder.NewTokenRefresher(),
+	}
 	t.clientFactory = t.defaultClientFactory
 	return t
 }
@@ -34,6 +40,14 @@ func NewWithClientFactory(cfg *config.Config, logger *slog.Logger, factory Clien
 		cfg:           cfg,
 		clientFactory: factory,
 		logger:        logger,
+		// tokenRefresher not needed when using custom factory (e.g., for tests)
+	}
+}
+
+// Close releases resources held by the Tools instance.
+func (t *Tools) Close() {
+	if t.tokenRefresher != nil {
+		t.tokenRefresher.Close()
 	}
 }
 
@@ -373,13 +387,26 @@ func (t *Tools) getClient(ctx context.Context) (MinderClient, error) {
 }
 
 // defaultClientFactory creates a real Minder client using the token from context.
+// If the token is an offline/refresh token or expired, it will be refreshed automatically.
 func (t *Tools) defaultClientFactory(ctx context.Context) (MinderClient, error) {
 	token := middleware.TokenFromContext(ctx)
+
+	serverCfg := minder.ServerConfig{
+		Host:     t.cfg.Minder.Host,
+		Port:     t.cfg.Minder.Port,
+		Insecure: t.cfg.Minder.Insecure,
+	}
+
+	// Validate and potentially refresh the token
+	validToken, err := t.tokenRefresher.GetValidAccessToken(ctx, token, serverCfg)
+	if err != nil {
+		return nil, fmt.Errorf("token validation failed: %w", err)
+	}
 
 	return minder.NewClient(minder.ClientConfig{
 		Host:     t.cfg.Minder.Host,
 		Port:     t.cfg.Minder.Port,
 		Insecure: t.cfg.Minder.Insecure,
-		Token:    token,
+		Token:    validToken,
 	})
 }

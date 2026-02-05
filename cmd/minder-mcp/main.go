@@ -25,6 +25,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Warn if insecure mode is enabled
+	if cfg.Minder.Insecure {
+		fmt.Fprintln(os.Stderr, "WARNING: Running in insecure mode - TLS is disabled")
+	}
+
 	// Setup logging
 	logger := logging.Setup(cfg.LogLevel)
 	slog.SetDefault(logger)
@@ -38,6 +43,7 @@ func main() {
 
 	// Register tools
 	t := tools.New(cfg, logger)
+	defer t.Close() // Ensure cleanup of HTTP client resources
 	t.Register(mcpServer)
 
 	// Create HTTP context function that extracts auth token

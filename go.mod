@@ -3,8 +3,10 @@ module github.com/stacklok/minder-mcp
 go 1.25
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/mark3labs/mcp-go v0.43.2
 	github.com/mindersec/minder v0.1.1
+	golang.org/x/oauth2 v0.34.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.10
 )

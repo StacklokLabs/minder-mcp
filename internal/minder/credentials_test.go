@@ -14,28 +14,41 @@ func TestNewJWTTokenCredentials(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name  string
-		token string
+		name     string
+		token    string
+		insecure bool
 	}{
 		{
-			name:  "creates credentials with token",
-			token: "my-jwt-token",
+			name:     "creates secure credentials with token",
+			token:    "my-jwt-token",
+			insecure: false,
 		},
 		{
-			name:  "creates credentials with empty token",
-			token: "",
+			name:     "creates insecure credentials with token",
+			token:    "my-jwt-token",
+			insecure: true,
+		},
+		{
+			name:     "creates credentials with empty token",
+			token:    "",
+			insecure: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			creds := NewJWTTokenCredentials(tt.token)
+			creds := NewJWTTokenCredentials(tt.token, tt.insecure)
 			if creds == nil {
 				t.Fatal("NewJWTTokenCredentials() returned nil")
 			}
 			if creds.token != tt.token {
 				t.Errorf("token = %q, want %q", creds.token, tt.token)
+			}
+			// requireTransport should be opposite of insecure
+			wantRequireTransport := !tt.insecure
+			if creds.requireTransport != wantRequireTransport {
+				t.Errorf("requireTransport = %v, want %v", creds.requireTransport, wantRequireTransport)
 			}
 		})
 	}
@@ -64,7 +77,7 @@ func TestJWTTokenCredentials_GetRequestMetadata(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			creds := NewJWTTokenCredentials(tt.token)
+			creds := NewJWTTokenCredentials(tt.token, false)
 			metadata, err := creds.GetRequestMetadata(context.Background())
 			if err != nil {
 				t.Fatalf("GetRequestMetadata() error = %v", err)
@@ -84,7 +97,7 @@ func TestJWTTokenCredentials_GetRequestMetadata(t *testing.T) {
 func TestJWTTokenCredentials_GetRequestMetadata_IgnoresURI(t *testing.T) {
 	t.Parallel()
 
-	creds := NewJWTTokenCredentials("test-token")
+	creds := NewJWTTokenCredentials("test-token", false)
 
 	// Call with various URI arguments - should all return same result
 	uriCases := [][]string{
@@ -108,8 +121,30 @@ func TestJWTTokenCredentials_GetRequestMetadata_IgnoresURI(t *testing.T) {
 func TestJWTTokenCredentials_RequireTransportSecurity(t *testing.T) {
 	t.Parallel()
 
-	creds := NewJWTTokenCredentials("any-token")
-	if creds.RequireTransportSecurity() {
-		t.Error("RequireTransportSecurity() = true, want false")
+	tests := []struct {
+		name     string
+		insecure bool
+		want     bool
+	}{
+		{
+			name:     "requires transport security by default",
+			insecure: false,
+			want:     true,
+		},
+		{
+			name:     "does not require transport security when insecure",
+			insecure: true,
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			creds := NewJWTTokenCredentials("any-token", tt.insecure)
+			if got := creds.RequireTransportSecurity(); got != tt.want {
+				t.Errorf("RequireTransportSecurity() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

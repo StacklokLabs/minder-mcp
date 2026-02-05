@@ -11,6 +11,8 @@ MCP server exposing Minder's read-only operations via streaming HTTP transport. 
 - `task test` - Run tests
 - `task run` - Run server locally
 
+**IMPORTANT**: You **MUST** use the Taskfile for building and testing this code base.
+
 ## Architecture
 
 - `cmd/minder-mcp/` - Entry point
