@@ -26,9 +26,52 @@ let profileStatuses: Map<string, ProfileStatusResult> = new Map();
 let repositories: Repository[] = [];
 let isLoading = false;
 let mcpClient: MCPAppsClient | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Project context - extracted from tool inputs
 let currentProjectId: string | null = null;
+
+/**
+ * Notify the host about content size changes.
+ * Required for Goose compatibility - the host uses this to size the iframe.
+ * Debounced to prevent excessive postMessage calls during rapid resize events.
+ */
+function notifySizeChange(): void {
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout);
+  }
+
+  resizeTimeout = setTimeout(() => {
+    const height = document.body.scrollHeight;
+    window.parent.postMessage(
+      {
+        type: 'ui-size-change',
+        payload: { height },
+      },
+      '*'
+    );
+  }, 16); // ~1 frame at 60fps
+}
+
+/**
+ * Set up ResizeObserver to automatically notify host of size changes.
+ */
+function setupResizeObserver(): void {
+  if (resizeObserver) {
+    return; // Already set up
+  }
+
+  resizeObserver = new ResizeObserver(() => {
+    notifySizeChange();
+  });
+
+  // Observe the body for any size changes
+  resizeObserver.observe(document.body);
+
+  // Also send initial size
+  notifySizeChange();
+}
 
 // DOM element references
 let refreshBtn: HTMLButtonElement;
@@ -76,6 +119,9 @@ export function initDashboard(): void {
       }
     });
   });
+
+  // Set up ResizeObserver for Goose compatibility
+  setupResizeObserver();
 
   // Initialize MCP client
   mcpClient = new MCPAppsClient();
