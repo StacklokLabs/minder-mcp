@@ -26,3 +26,6 @@ vendor/
 
 # Taskfile
 .task/
+
+# Minder offline token
+offline.token
