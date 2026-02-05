@@ -732,12 +732,11 @@ function renderRepositories(): void {
     const matchesFilter = name.includes(filter);
 
     // Apply status filter if set
-    if (statusFilter && statusFilter !== 'all') {
+    if (statusFilter) {
       const repoName = `${r.owner}/${r.name}`;
       const rules = repoRules.get(repoName);
       const status = getRepoStatus(rules);
-      if (statusFilter === 'passing' && status !== 'success') return false;
-      if (statusFilter === 'failing' && status !== 'failure') return false;
+      if (status !== statusFilter) return false;
     }
 
     return matchesFilter;
