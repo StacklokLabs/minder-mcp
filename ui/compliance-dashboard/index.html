@@ -54,6 +54,12 @@
     <div id="profiles-section" class="section">
       <div class="filter-bar">
         <input type="text" class="filter-input" id="profile-filter" placeholder="Filter profiles...">
+        <select class="filter-select" id="profile-status-filter">
+          <option value="">All Statuses</option>
+          <option value="success">Passing</option>
+          <option value="failure">Failing</option>
+          <option value="pending">Pending</option>
+        </select>
       </div>
       <div id="profiles-list" class="list">
         <div class="loading">

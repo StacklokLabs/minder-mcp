@@ -84,6 +84,7 @@ let complianceRateEl: HTMLElement;
 let profilesListEl: HTMLDivElement;
 let repositoriesListEl: HTMLDivElement;
 let profileFilterEl: HTMLInputElement;
+let profileStatusFilterEl: HTMLSelectElement;
 let repoFilterEl: HTMLInputElement;
 let statusFilterEl: HTMLSelectElement;
 
@@ -101,12 +102,14 @@ export function initDashboard(): void {
   profilesListEl = getRequiredElement<HTMLDivElement>('profiles-list');
   repositoriesListEl = getRequiredElement<HTMLDivElement>('repositories-list');
   profileFilterEl = getRequiredElement<HTMLInputElement>('profile-filter');
+  profileStatusFilterEl = getRequiredElement<HTMLSelectElement>('profile-status-filter');
   repoFilterEl = getRequiredElement<HTMLInputElement>('repo-filter');
   statusFilterEl = getRequiredElement<HTMLSelectElement>('status-filter');
 
   // Set up event listeners
   refreshBtn.addEventListener('click', loadDashboard);
   profileFilterEl.addEventListener('input', renderProfiles);
+  profileStatusFilterEl.addEventListener('change', renderProfiles);
   repoFilterEl.addEventListener('input', renderRepositories);
   statusFilterEl.addEventListener('change', renderRepositories);
 
@@ -521,10 +524,22 @@ function getOverallStatus(
  */
 function renderProfiles(): void {
   const filter = profileFilterEl.value.toLowerCase();
+  const statusFilter = profileStatusFilterEl.value;
 
-  const filteredProfiles = profiles.filter((p) =>
-    p.name.toLowerCase().includes(filter)
-  );
+  const filteredProfiles = profiles.filter((p) => {
+    const matchesName = p.name.toLowerCase().includes(filter);
+
+    // Apply status filter if set
+    if (statusFilter) {
+      const status = profileStatuses.get(p.id);
+      const overallStatus = getOverallStatus(status);
+      if (statusFilter === 'success' && overallStatus !== 'success') return false;
+      if (statusFilter === 'failure' && overallStatus !== 'failure') return false;
+      if (statusFilter === 'pending' && overallStatus !== 'pending') return false;
+    }
+
+    return matchesName;
+  });
 
   if (filteredProfiles.length === 0) {
     profilesListEl.innerHTML = `
