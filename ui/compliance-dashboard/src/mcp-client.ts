@@ -64,7 +64,7 @@ export class MCPAppsClient {
    */
   onToolResult(callback: ToolResultCallback): void {
     this.onToolResultCallback = callback;
-    this.app.ontoolresult = (result) => {
+    this.app.ontoolresult = (result): void => {
       console.log('[MCP] Received tool result notification:', result);
       if (this.onToolResultCallback) {
         this.onToolResultCallback(result);
@@ -78,7 +78,7 @@ export class MCPAppsClient {
    */
   onToolInput(callback: ToolInputCallback): void {
     this.onToolInputCallback = callback;
-    this.app.ontoolinput = (input) => {
+    this.app.ontoolinput = (input): void => {
       console.log('[MCP] Received tool input notification:', input);
       if (this.onToolInputCallback) {
         this.onToolInputCallback(input);
@@ -92,7 +92,7 @@ export class MCPAppsClient {
    */
   onDimensionsChange(callback: DimensionsCallback): void {
     this.onDimensionsCallback = callback;
-    this.app.onhostcontextchanged = (context) => {
+    this.app.onhostcontextchanged = (context): void => {
       console.log('[MCP] Received host context change:', context);
       if (context.containerDimensions && this.onDimensionsCallback) {
         const dims = context.containerDimensions as ContainerDimensions;

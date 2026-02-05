@@ -86,7 +86,13 @@ func main() {
 	addr := fmt.Sprintf(":%d", cfg.MCP.Port)
 	slog.Info("Starting Minder MCP server", "addr", addr, "endpoint", cfg.MCP.EndpointPath)
 
-	if err := http.ListenAndServe(addr, corsHandler); err != nil {
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           corsHandler,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("Failed to start server", "error", err)
 		os.Exit(1)
 	}
