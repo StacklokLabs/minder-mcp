@@ -279,6 +279,41 @@ h1 {
 
 .rule-name {
   font-size: 13px;
+  font-weight: 500;
+}
+
+.rule-item-detailed {
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+}
+
+.rule-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rule-item-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rule-entity {
+  display: flex;
+  align-items: center;
+}
+
+.rule-entity-type {
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: lowercase;
 }
 
 .chevron {

@@ -595,13 +595,27 @@ function renderProfileRules(status: ProfileStatusResult | undefined): string {
       ${status.rule_evaluation_status
         .map((rule) => {
           const safeStatus = escapeAttr(rule.status || 'pending');
+          const entityName = rule.entity_info?.name || 'Unknown entity';
+          const entityType = rule.entity_info?.entity_type || 'entity';
+
           return `
-          <div class="rule-item">
-            <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type_name || 'Unknown rule')}</span>
-            <span class="status-badge ${safeStatus}">
-              <span class="status-dot ${safeStatus}"></span>
-              ${escapeHtml(rule.status || 'pending')}
-            </span>
+          <div class="rule-item-detailed">
+            <div class="rule-item-header">
+              <span class="rule-name">${escapeHtml(rule.rule_name || rule.rule_type_name || 'Unknown rule')}</span>
+              <span class="status-badge ${safeStatus}">
+                <span class="status-dot ${safeStatus}"></span>
+                ${escapeHtml(rule.status || 'pending')}
+              </span>
+            </div>
+            <div class="rule-item-details">
+              <span class="rule-entity" title="${escapeAttr(entityType)}">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -2px; margin-right: 4px;">
+                  <path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5v-9zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8.5V1.5zm-8 11h8v1h-8a1 1 0 0 1 0-2z"/>
+                </svg>
+                ${escapeHtml(entityName)}
+              </span>
+              <span class="rule-entity-type">${escapeHtml(entityType)}</span>
+            </div>
           </div>
         `;
         })
