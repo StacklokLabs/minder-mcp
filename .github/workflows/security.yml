@@ -6,8 +6,6 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Run weekly on Sundays at midnight
 
-# TODO: Add security-events: write permission when repo is public
-# to enable uploading SARIF results to GitHub Security tab
 permissions:
   contents: read
 
@@ -23,35 +21,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
-      - name: Run Trivy vulnerability scanner in repo mode
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
         with:
           scan-type: 'fs'
           ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          format: 'table'
           severity: 'CRITICAL,HIGH'
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@19b2f06db2b6f5108140aeb04014ef02b648f789 # v4
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: 'trivy-fs'
-
-      - name: Run Trivy vulnerability scanner in IaC mode
+      - name: Run Trivy IaC scanner
         uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
         with:
           scan-type: 'config'
-          hide-progress: false
-          format: 'sarif'
-          output: 'trivy-config-results.sarif'
+          format: 'table'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy IaC scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@19b2f06db2b6f5108140aeb04014ef02b648f789 # v4
-        if: always()
-        with:
-          sarif_file: 'trivy-config-results.sarif'
-          category: 'trivy-config'
