@@ -30,7 +30,8 @@ MCP server exposing Minder's read-only operations via streaming HTTP transport. 
 
 - `cmd/minder-mcp/` - Entry point
 - `internal/config/` - Environment configuration
-- `internal/minder/` - gRPC client wrapper
+- `internal/logging/` - Structured JSON logging with slog
+- `internal/minder/` - gRPC client wrapper + token refresh
 - `internal/middleware/` - Auth token handling
 - `internal/tools/` - MCP tool implementations
 - `internal/resources/` - MCP resource handlers (compliance dashboard)

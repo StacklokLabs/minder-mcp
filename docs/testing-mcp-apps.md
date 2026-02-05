@@ -5,7 +5,7 @@ This guide explains how to test the Minder Compliance Dashboard (an MCP App) loc
 ## Prerequisites
 
 - Node.js 18+
-- Go 1.21+
+- Go 1.25+
 - A valid Minder auth token
 
 ## Setup

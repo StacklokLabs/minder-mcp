@@ -444,7 +444,7 @@ The minder-mcp project implements a compliance dashboard as an MCP App, demonstr
 minder-mcp/
 ├── cmd/minder-mcp/          # Entry point
 ├── internal/
-│   ├── tools/               # MCP tool implementations (27 tools)
+│   ├── tools/               # MCP tool implementations (16 tools)
 │   │   └── dashboard.go     # minder_show_dashboard tool
 │   └── resources/           # MCP resource handlers
 │       ├── dashboard_html.go

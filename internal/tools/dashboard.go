@@ -9,8 +9,8 @@ import (
 )
 
 // showComplianceDashboard displays the interactive Minder Compliance Dashboard.
-// This tool returns metadata that triggers Goose Desktop to render the embedded
-// Vue.js dashboard showing repository security posture and profile compliance.
+// This tool returns metadata that triggers MCP Apps-enabled clients to render the embedded
+// TypeScript dashboard showing repository security posture and profile compliance.
 func (*Tools) showComplianceDashboard(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	result := &mcp.CallToolResult{
 		Content: []mcp.Content{

@@ -75,11 +75,14 @@ The server supports two authentication methods (in priority order):
 ### Evaluation Results
 - `minder_list_evaluation_history` - List evaluation history with optional filters
 
+### Dashboard (MCP Apps)
+- `minder_show_dashboard` - Display the interactive Compliance Dashboard
+
 ## Resources
 
 ### Compliance Dashboard
 - **URI**: `ui://minder/compliance-dashboard`
-- **MIME Type**: `text/html`
+- **MIME Type**: `text/html;profile=mcp-app`
 
 An interactive compliance dashboard that displays real-time compliance status across repositories with drill-down capabilities. The dashboard is designed for MCP Apps-enabled clients (VS Code, Claude, etc.) and provides:
 
@@ -117,7 +120,7 @@ task test:coverage
 task fmt
 
 # Build, lint, and test
-task all
+task check
 
 # Build UI only
 task build:ui
@@ -125,8 +128,17 @@ task build:ui
 # Lint UI (TypeScript)
 task lint:ui
 
-# Lint everything (Go + UI)
-task lint:all
+# Build container image (requires ko)
+task build:container
+
+# CI pipeline (lint + test coverage + build)
+task ci
+
+# Clean build artifacts
+task clean
+
+# Clean everything (including node_modules)
+task clean:all
 ```
 
 ## License
