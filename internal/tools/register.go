@@ -388,6 +388,15 @@ func (t *Tools) Register(s *server.MCPServer) {
 				"empty for unlabeled only. Prefix with '!' to exclude (e.g., '!system')."),
 		),
 	), t.wrapHandler("minder_list_evaluation_history", t.listEvaluationHistory))
+
+	// Dashboard
+	s.AddTool(mcp.NewTool("minder_show_dashboard",
+		mcp.WithDescription("Display the Minder Compliance Dashboard - an interactive visual interface "+
+			"showing repository security posture, profile compliance status, and evaluation history "+
+			"across all monitored repositories"),
+		mcp.WithTitleAnnotation("Show Compliance Dashboard"),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), t.wrapHandler("minder_show_dashboard", t.showComplianceDashboard))
 }
 
 // getClient returns a MinderClient using the configured factory.
