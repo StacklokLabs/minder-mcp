@@ -40,7 +40,7 @@ func TestListArtifacts(t *testing.T) {
 			mockSetup: func(m *mockMinderClient) {
 				m.artifacts.listErr = status.Error(codes.PermissionDenied, "no access")
 			},
-			params:      map[string]any{},
+			params:      map[string]any{"project_id": "test-project"},
 			wantErr:     true,
 			errContains: "Permission denied",
 		},

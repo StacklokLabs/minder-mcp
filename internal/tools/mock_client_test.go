@@ -190,6 +190,14 @@ type mockProjectsService struct {
 }
 
 func (m *mockProjectsService) ListProjects(_ context.Context, _ *minderv1.ListProjectsRequest, _ ...grpc.CallOption) (*minderv1.ListProjectsResponse, error) {
+	// By default return a single test project if no response/error is set
+	if m.listResp == nil && m.listErr == nil {
+		return &minderv1.ListProjectsResponse{
+			Projects: []*minderv1.Project{
+				{ProjectId: "test-project-id", Name: "test-project"},
+			},
+		}, nil
+	}
 	return m.listResp, m.listErr
 }
 

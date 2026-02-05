@@ -20,19 +20,25 @@ func (t *Tools) listDataSources(ctx context.Context, req mcp.CallToolRequest) (*
 
 	projectID := req.GetString("project_id", "")
 
-	reqProto := &minderv1.ListDataSourcesRequest{}
-	if projectID != "" {
-		reqProto.Context = &minderv1.ContextV2{
-			ProjectId: projectID,
-		}
-	}
-
-	resp, err := client.DataSources().ListDataSources(ctx, reqProto)
+	// Use multi-project aggregation when no project_id specified
+	dataSources, err := forEachProject(
+		ctx, client, projectID,
+		func(ctx context.Context, projID string) ([]*minderv1.DataSource, error) {
+			resp, err := client.DataSources().ListDataSources(ctx, &minderv1.ListDataSourcesRequest{
+				Context: &minderv1.ContextV2{
+					ProjectId: projID,
+				},
+			})
+			if err != nil {
+				return nil, err
+			}
+			return resp.DataSources, nil
+		})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	return marshalResult(resp.DataSources)
+	return marshalResult(dataSources)
 }
 
 func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -60,7 +66,7 @@ func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mc
 	var dataSource *minderv1.DataSource
 
 	if dataSourceID != "" {
-		// Lookup by ID
+		// Lookup by ID - no project context needed
 		resp, err := client.DataSources().GetDataSourceById(ctx, &minderv1.GetDataSourceByIdRequest{
 			Id: dataSourceID,
 		})
@@ -69,20 +75,24 @@ func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mc
 		}
 		dataSource = resp.DataSource
 	} else {
-		// Lookup by name
-		reqProto := &minderv1.GetDataSourceByNameRequest{
-			Name: name,
-		}
-		if projectID != "" {
-			reqProto.Context = &minderv1.ContextV2{
-				ProjectId: projectID,
-			}
-		}
-		resp, err := client.DataSources().GetDataSourceByName(ctx, reqProto)
+		// Lookup by name - search across projects if none specified
+		dataSource, err = findInProjects(
+			ctx, client, projectID,
+			func(ctx context.Context, projID string) (*minderv1.DataSource, error) {
+				resp, err := client.DataSources().GetDataSourceByName(ctx, &minderv1.GetDataSourceByNameRequest{
+					Name: name,
+					Context: &minderv1.ContextV2{
+						ProjectId: projID,
+					},
+				})
+				if err != nil {
+					return nil, err
+				}
+				return resp.DataSource, nil
+			})
 		if err != nil {
 			return mcp.NewToolResultError(MapGRPCError(err)), nil
 		}
-		dataSource = resp.DataSource
 	}
 
 	return marshalResult(dataSource)

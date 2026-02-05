@@ -34,86 +34,82 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 	pageSize := req.GetInt("page_size", 0)
 	labelFilter := req.GetString("label_filter", "*") // Default to "*" to include all profiles
 
-	reqProto := &minderv1.ListEvaluationHistoryRequest{}
-
-	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
-		}
-	}
-
-	if profileName != "" {
-		reqProto.ProfileName = []string{profileName}
-	}
-
-	if entityType != "" {
-		reqProto.EntityType = []string{entityType}
-	}
-
-	if entityName != "" {
-		reqProto.EntityName = []string{entityName}
-	}
-
-	if evalStatus != "" {
-		reqProto.Status = []string{evalStatus}
-	}
-
-	if remediationStatus != "" {
-		reqProto.Remediation = []string{remediationStatus}
-	}
-
-	if alertStatus != "" {
-		reqProto.Alert = []string{alertStatus}
-	}
-
-	if labelFilter != "" {
-		reqProto.LabelFilter = []string{labelFilter}
-	}
-
+	// Parse time filters once
+	var fromTime, toTime *timestamppb.Timestamp
 	if fromStr != "" {
 		if ts, err := time.Parse(time.RFC3339, fromStr); err == nil {
-			reqProto.From = timestamppb.New(ts)
+			fromTime = timestamppb.New(ts)
 		}
 	}
-
 	if toStr != "" {
 		if ts, err := time.Parse(time.RFC3339, toStr); err == nil {
-			reqProto.To = timestamppb.New(ts)
+			toTime = timestamppb.New(ts)
 		}
 	}
 
-	// Add pagination parameters (advanced cursor)
-	if cursor != "" || pageSize > 0 {
-		reqProto.Cursor = &minderv1.Cursor{}
-		if cursor != "" {
-			reqProto.Cursor.Cursor = cursor
-		}
-		if pageSize > 0 && pageSize <= 100 {
-			reqProto.Cursor.Size = uint32(pageSize) //nolint:gosec // pageSize is bounded by schema validation (1-100)
-		}
-	}
+	// Use multi-project aggregation when no project_id specified
+	// Note: pagination only works within a single project when aggregating
+	evaluations, err := forEachProject(
+		ctx, client, projectID,
+		func(ctx context.Context, projID string) ([]*minderv1.EvaluationHistory, error) {
+			reqProto := &minderv1.ListEvaluationHistoryRequest{
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
+			}
 
-	resp, err := client.EvalResults().ListEvaluationHistory(ctx, reqProto)
+			if profileName != "" {
+				reqProto.ProfileName = []string{profileName}
+			}
+			if entityType != "" {
+				reqProto.EntityType = []string{entityType}
+			}
+			if entityName != "" {
+				reqProto.EntityName = []string{entityName}
+			}
+			if evalStatus != "" {
+				reqProto.Status = []string{evalStatus}
+			}
+			if remediationStatus != "" {
+				reqProto.Remediation = []string{remediationStatus}
+			}
+			if alertStatus != "" {
+				reqProto.Alert = []string{alertStatus}
+			}
+			if labelFilter != "" {
+				reqProto.LabelFilter = []string{labelFilter}
+			}
+			if fromTime != nil {
+				reqProto.From = fromTime
+			}
+			if toTime != nil {
+				reqProto.To = toTime
+			}
+
+			// Add pagination parameters (advanced cursor)
+			if cursor != "" || pageSize > 0 {
+				reqProto.Cursor = &minderv1.Cursor{}
+				if cursor != "" {
+					reqProto.Cursor.Cursor = cursor
+				}
+				if pageSize > 0 && pageSize <= 100 {
+					reqProto.Cursor.Size = uint32(pageSize) //nolint:gosec // pageSize is bounded by schema validation (1-100)
+				}
+			}
+
+			resp, err := client.EvalResults().ListEvaluationHistory(ctx, reqProto)
+			if err != nil {
+				return nil, err
+			}
+			return resp.Data, nil
+		})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	// Build paginated response with advanced cursor info
+	// Build response (pagination info not reliable when aggregating multiple projects)
 	result := map[string]any{
-		"results": resp.Data,
-	}
-
-	if resp.Page != nil {
-		pagination := map[string]any{
-			"total_records": resp.Page.TotalRecords,
-		}
-		if resp.Page.Next != nil && resp.Page.Next.Cursor != "" {
-			pagination["next_cursor"] = resp.Page.Next.Cursor
-		}
-		if resp.Page.Prev != nil && resp.Page.Prev.Cursor != "" {
-			pagination["prev_cursor"] = resp.Page.Prev.Cursor
-		}
-		result["pagination"] = pagination
+		"results": evaluations,
 	}
 
 	return marshalResult(result)

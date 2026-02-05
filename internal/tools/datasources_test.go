@@ -40,7 +40,7 @@ func TestListDataSources(t *testing.T) {
 			mockSetup: func(m *mockMinderClient) {
 				m.dataSources.listErr = status.Error(codes.Unavailable, "service down")
 			},
-			params:      map[string]any{},
+			params:      map[string]any{"project_id": "test-project"},
 			wantErr:     true,
 			errContains: "unavailable",
 		},

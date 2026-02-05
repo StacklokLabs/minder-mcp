@@ -54,7 +54,7 @@ func TestListProviders(t *testing.T) {
 			mockSetup: func(m *mockMinderClient) {
 				m.providers.listErr = status.Error(codes.Internal, "internal error")
 			},
-			params:      map[string]any{},
+			params:      map[string]any{"project_id": "test-project"},
 			wantErr:     true,
 			errContains: "Internal server error",
 		},

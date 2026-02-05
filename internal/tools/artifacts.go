@@ -21,23 +21,27 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 	projectID := req.GetString("project_id", "")
 	provider := req.GetString("provider", "")
 
-	reqProto := &minderv1.ListArtifactsRequest{}
-	if projectID != "" || provider != "" {
-		reqProto.Context = &minderv1.Context{}
-		if projectID != "" {
-			reqProto.Context.Project = &projectID
+	// Use multi-project aggregation when no project_id specified
+	artifacts, err := forEachProject(ctx, client, projectID, func(ctx context.Context, projID string) ([]*minderv1.Artifact, error) {
+		reqProto := &minderv1.ListArtifactsRequest{
+			Context: &minderv1.Context{
+				Project: &projID,
+			},
 		}
 		if provider != "" {
 			reqProto.Context.Provider = &provider
 		}
-	}
-
-	resp, err := client.Artifacts().ListArtifacts(ctx, reqProto)
+		resp, err := client.Artifacts().ListArtifacts(ctx, reqProto)
+		if err != nil {
+			return nil, err
+		}
+		return resp.Results, nil
+	})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	return marshalResult(resp.Results)
+	return marshalResult(artifacts)
 }
 
 func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -67,7 +71,7 @@ func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	var artifact *minderv1.Artifact
 
 	if artifactID != "" {
-		// Lookup by ID
+		// Lookup by ID - no project context needed
 		resp, err := client.Artifacts().GetArtifactById(ctx, &minderv1.GetArtifactByIdRequest{
 			Id: artifactID,
 		})
@@ -76,24 +80,26 @@ func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		}
 		artifact = resp.Artifact
 	} else {
-		// Lookup by name
-		reqProto := &minderv1.GetArtifactByNameRequest{
-			Name: name,
-		}
-		if projectID != "" || provider != "" {
-			reqProto.Context = &minderv1.Context{}
-			if projectID != "" {
-				reqProto.Context.Project = &projectID
+		// Lookup by name - search across projects if none specified
+		artifact, err = findInProjects(ctx, client, projectID, func(ctx context.Context, projID string) (*minderv1.Artifact, error) {
+			reqProto := &minderv1.GetArtifactByNameRequest{
+				Name: name,
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
 			}
 			if provider != "" {
 				reqProto.Context.Provider = &provider
 			}
-		}
-		resp, err := client.Artifacts().GetArtifactByName(ctx, reqProto)
+			resp, err := client.Artifacts().GetArtifactByName(ctx, reqProto)
+			if err != nil {
+				return nil, err
+			}
+			return resp.Artifact, nil
+		})
 		if err != nil {
 			return mcp.NewToolResultError(MapGRPCError(err)), nil
 		}
-		artifact = resp.Artifact
 	}
 
 	return marshalResult(artifact)

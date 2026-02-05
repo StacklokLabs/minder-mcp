@@ -45,7 +45,8 @@ func TestListRepositories(t *testing.T) {
 					Cursor: "next-page-cursor",
 				}
 			},
-			params:     map[string]any{"limit": 10},
+			// Note: pagination only works when project_id is specified (single-project mode)
+			params:     map[string]any{"project_id": "test-project", "limit": 10},
 			wantErr:    false,
 			wantInResp: "next_cursor",
 		},
@@ -54,7 +55,7 @@ func TestListRepositories(t *testing.T) {
 			mockSetup: func(m *mockMinderClient) {
 				m.repositories.listErr = status.Error(codes.Unavailable, "service down")
 			},
-			params:      map[string]any{},
+			params:      map[string]any{"project_id": "test-project"},
 			wantErr:     true,
 			errContains: "unavailable",
 		},

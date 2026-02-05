@@ -55,7 +55,7 @@ func TestListProfiles(t *testing.T) {
 			mockSetup: func(m *mockMinderClient) {
 				m.profiles.listErr = status.Error(codes.PermissionDenied, "access denied")
 			},
-			params:      map[string]any{},
+			params:      map[string]any{"project_id": "test-project"},
 			wantErr:     true,
 			errContains: "Permission denied",
 		},

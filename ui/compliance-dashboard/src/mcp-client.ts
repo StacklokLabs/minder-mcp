@@ -1,4 +1,29 @@
-import { App, PostMessageTransport } from '@modelcontextprotocol/ext-apps';
+import {
+  App,
+  PostMessageTransport,
+  type McpUiToolResultNotification,
+  type McpUiToolInputNotification,
+} from '@modelcontextprotocol/ext-apps';
+
+/**
+ * Type for tool result notification params.
+ */
+export type ToolResultParams = McpUiToolResultNotification['params'];
+
+/**
+ * Type for tool input notification params.
+ */
+export type ToolInputParams = McpUiToolInputNotification['params'];
+
+/**
+ * Callback type for receiving tool results via notification.
+ */
+export type ToolResultCallback = (result: ToolResultParams) => void;
+
+/**
+ * Callback type for receiving tool input via notification.
+ */
+export type ToolInputCallback = (input: ToolInputParams) => void;
 
 /**
  * MCP Apps client for communicating with the MCP server from a UI iframe.
@@ -7,12 +32,42 @@ import { App, PostMessageTransport } from '@modelcontextprotocol/ext-apps';
 export class MCPAppsClient {
   private app: App;
   private connected = false;
+  private onToolResultCallback: ToolResultCallback | null = null;
+  private onToolInputCallback: ToolInputCallback | null = null;
 
   constructor() {
     this.app = new App({
       name: 'Minder Compliance Dashboard',
       version: '1.0.0',
     });
+  }
+
+  /**
+   * Register a callback for tool results pushed by the host.
+   * MUST be called before connect() to receive initial data.
+   */
+  onToolResult(callback: ToolResultCallback): void {
+    this.onToolResultCallback = callback;
+    this.app.ontoolresult = (result) => {
+      console.log('[MCP] Received tool result notification:', result);
+      if (this.onToolResultCallback) {
+        this.onToolResultCallback(result);
+      }
+    };
+  }
+
+  /**
+   * Register a callback for tool input pushed by the host.
+   * MUST be called before connect() to receive initial data.
+   */
+  onToolInput(callback: ToolInputCallback): void {
+    this.onToolInputCallback = callback;
+    this.app.ontoolinput = (input) => {
+      console.log('[MCP] Received tool input notification:', input);
+      if (this.onToolInputCallback) {
+        this.onToolInputCallback(input);
+      }
+    };
   }
 
   async connect(): Promise<void> {
@@ -24,6 +79,16 @@ export class MCPAppsClient {
     const transport = new PostMessageTransport(window.parent, window.parent);
     await this.app.connect(transport);
     this.connected = true;
+    console.log('[MCP] Connected to host');
+  }
+
+  /**
+   * Check if the host supports calling server tools directly.
+   */
+  supportsServerTools(): boolean {
+    const caps = this.app.getHostCapabilities();
+    // serverTools is an object when supported, undefined when not
+    return caps?.serverTools !== undefined;
   }
 
   async disconnect(): Promise<void> {

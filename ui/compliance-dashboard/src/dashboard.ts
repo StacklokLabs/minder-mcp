@@ -1,8 +1,12 @@
 import {
   MCPAppsClient,
   Profile,
+  ProfilesResult,
   ProfileStatusResult,
   Repository,
+  RepositoriesResult,
+  type ToolResultParams,
+  type ToolInputParams,
 } from './mcp-client.js';
 
 /**
@@ -22,6 +26,9 @@ let profileStatuses: Map<string, ProfileStatusResult> = new Map();
 let repositories: Repository[] = [];
 let isLoading = false;
 let mcpClient: MCPAppsClient | null = null;
+
+// Project context - extracted from tool inputs
+let currentProjectId: string | null = null;
 
 // DOM element references
 let refreshBtn: HTMLButtonElement;
@@ -70,9 +77,146 @@ export function initDashboard(): void {
     });
   });
 
-  // Initialize MCP client and load data
+  // Initialize MCP client
   mcpClient = new MCPAppsClient();
+
+  // Register handlers BEFORE connecting to receive initial data push
+  mcpClient.onToolResult((result: ToolResultParams) => {
+    console.log('[Dashboard] Received tool result:', result);
+    handleToolResult(result);
+  });
+
+  mcpClient.onToolInput((input: ToolInputParams) => {
+    console.log('[Dashboard] Received tool input:', input);
+    handleToolInput(input);
+  });
+
+  // Now connect and load data
   loadDashboard();
+}
+
+/**
+ * Handle tool results pushed by the MCP host.
+ * This is called when the LLM invokes a Minder tool and the host pushes the result.
+ */
+function handleToolResult(result: ToolResultParams): void {
+  // Extract the tool name and content from the result
+  // The result may contain structuredContent or content array
+  let data: unknown = null;
+
+  // Check for structuredContent first (preferred for rich data)
+  const structuredContent = result.structuredContent as
+    | Record<string, unknown>
+    | undefined;
+  if (structuredContent) {
+    data = structuredContent;
+  } else if (
+    result.content &&
+    Array.isArray(result.content) &&
+    result.content.length > 0
+  ) {
+    const firstContent = result.content[0];
+    if (
+      firstContent.type === 'text' &&
+      'text' in firstContent &&
+      typeof firstContent.text === 'string'
+    ) {
+      try {
+        data = JSON.parse(firstContent.text);
+      } catch {
+        console.warn(
+          '[Dashboard] Failed to parse tool result as JSON:',
+          firstContent.text
+        );
+        return;
+      }
+    }
+  }
+
+  if (!data) {
+    console.warn('[Dashboard] No data in tool result');
+    return;
+  }
+
+  // Try to identify the data type and update accordingly
+  if (isProfilesResult(data)) {
+    console.log(
+      '[Dashboard] Received profiles data:',
+      data.profiles.length,
+      'profiles'
+    );
+    profiles = data.profiles || [];
+    updateSummaryCards();
+    renderProfiles();
+  } else if (isProfileStatusResult(data)) {
+    console.log('[Dashboard] Received profile status:', data.profile_name);
+    profileStatuses.set(data.profile_id, data);
+    updateSummaryCards();
+    renderProfiles();
+  } else if (isRepositoriesResult(data)) {
+    console.log(
+      '[Dashboard] Received repositories data:',
+      data.repositories.length,
+      'repos'
+    );
+    repositories = data.repositories || [];
+    updateSummaryCards();
+    renderRepositories();
+  } else {
+    console.log('[Dashboard] Received unknown data type:', data);
+  }
+}
+
+/**
+ * Type guard for ProfilesResult
+ */
+function isProfilesResult(data: unknown): data is ProfilesResult {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'profiles' in data &&
+    Array.isArray((data as ProfilesResult).profiles)
+  );
+}
+
+/**
+ * Type guard for ProfileStatusResult
+ */
+function isProfileStatusResult(data: unknown): data is ProfileStatusResult {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'profile_id' in data &&
+    'profile_name' in data
+  );
+}
+
+/**
+ * Type guard for RepositoriesResult
+ */
+function isRepositoriesResult(data: unknown): data is RepositoriesResult {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'repositories' in data &&
+    Array.isArray((data as RepositoriesResult).repositories)
+  );
+}
+
+/**
+ * Handle tool input pushed by the MCP host.
+ * Extracts project_id from arguments for use in subsequent calls.
+ */
+function handleToolInput(input: ToolInputParams): void {
+  // Extract project_id from the tool arguments if present
+  const args = input.arguments as Record<string, unknown> | undefined;
+  if (args && typeof args.project_id === 'string' && args.project_id) {
+    const newProjectId = args.project_id;
+    if (newProjectId !== currentProjectId) {
+      console.log('[Dashboard] Project context set to:', newProjectId);
+      currentProjectId = newProjectId;
+    }
+  }
 }
 
 /**
@@ -91,9 +235,22 @@ async function loadDashboard(): Promise<void> {
   showError(null);
 
   try {
-    // Connect to the MCP host
+    // Connect to the MCP host (handlers are already registered)
     await client.connect();
 
+    // Check if the host supports calling server tools
+    const supportsServerTools = client.supportsServerTools();
+    console.log('[Dashboard] Host supports serverTools:', supportsServerTools);
+
+    if (!supportsServerTools) {
+      // Host doesn't support active tool calls - show waiting state
+      // Data will come through ontoolresult notifications when LLM calls tools
+      console.log('[Dashboard] Waiting for tool results via notifications...');
+      showWaitingForData();
+      return;
+    }
+
+    // Host supports serverTools - actively fetch data
     // Show loading state
     profilesListEl.innerHTML = `
       <div class="loading">
@@ -102,9 +259,11 @@ async function loadDashboard(): Promise<void> {
       </div>
     `;
 
-    // Load profiles
+    // Load profiles (use project context if available)
     try {
-      const profilesResult = await client.listProfiles();
+      const profilesResult = await client.listProfiles(
+        currentProjectId ?? undefined
+      );
       profiles = profilesResult.profiles || [];
     } catch (e) {
       console.error('Failed to load profiles:', e);
@@ -116,7 +275,13 @@ async function loadDashboard(): Promise<void> {
     profileStatuses = new Map();
     const statusPromises = profiles.map(async (profile) => {
       try {
-        const status = await client.getProfileStatus({ name: profile.name });
+        // Use project_id from profile context if available, or fall back to current context
+        const profileProjectId =
+          profile.context?.project_id ?? currentProjectId ?? undefined;
+        const status = await client.getProfileStatus({
+          name: profile.name,
+          projectId: profileProjectId,
+        });
         return { profile, status };
       } catch (e) {
         console.error(`Failed to get status for profile ${profile.name}:`, e);
@@ -130,9 +295,11 @@ async function loadDashboard(): Promise<void> {
       }
     }
 
-    // Load repositories
+    // Load repositories (use project context if available)
     try {
-      const reposResult = await client.listRepositories();
+      const reposResult = await client.listRepositories({
+        projectId: currentProjectId ?? undefined,
+      });
       repositories = reposResult.repositories || [];
     } catch (e) {
       console.error('Failed to load repositories:', e);
@@ -149,6 +316,33 @@ async function loadDashboard(): Promise<void> {
     isLoading = false;
     refreshBtn.disabled = false;
   }
+}
+
+/**
+ * Show a state indicating we're waiting for data via notifications.
+ */
+function showWaitingForData(): void {
+  const message = `
+    <div class="empty-state">
+      <div class="spinner" style="margin-bottom: 16px;"></div>
+      <h3 style="margin-bottom: 12px;">Waiting for Compliance Data</h3>
+      <p style="margin-bottom: 16px;">
+        Ask your AI assistant to fetch Minder data using these tools:
+      </p>
+      <ul style="text-align: left; max-width: 400px; margin: 0 auto 16px;">
+        <li><code>minder_list_profiles</code> - List all profiles</li>
+        <li><code>minder_get_profile_status</code> - Get compliance status</li>
+        <li><code>minder_list_repositories</code> - List repositories</li>
+      </ul>
+      <p style="color: var(--text-muted); font-size: 13px;">
+        Data will appear automatically when received.
+      </p>
+    </div>
+  `;
+  profilesListEl.innerHTML = message;
+  repositoriesListEl.innerHTML = message;
+  isLoading = false;
+  refreshBtn.disabled = false;
 }
 
 /**

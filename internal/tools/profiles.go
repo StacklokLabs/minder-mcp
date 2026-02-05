@@ -21,22 +21,27 @@ func (t *Tools) listProfiles(ctx context.Context, req mcp.CallToolRequest) (*mcp
 	projectID := req.GetString("project_id", "")
 	labelFilter := req.GetString("label_filter", "")
 
-	reqProto := &minderv1.ListProfilesRequest{}
-	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
+	// Use multi-project aggregation when no project_id specified
+	profiles, err := forEachProject(ctx, client, projectID, func(ctx context.Context, projID string) ([]*minderv1.Profile, error) {
+		reqProto := &minderv1.ListProfilesRequest{
+			Context: &minderv1.Context{
+				Project: &projID,
+			},
 		}
-	}
-	if labelFilter != "" {
-		reqProto.LabelFilter = labelFilter
-	}
-
-	resp, err := client.Profiles().ListProfiles(ctx, reqProto)
+		if labelFilter != "" {
+			reqProto.LabelFilter = labelFilter
+		}
+		resp, err := client.Profiles().ListProfiles(ctx, reqProto)
+		if err != nil {
+			return nil, err
+		}
+		return resp.Profiles, nil
+	})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	return marshalResult(resp.Profiles)
+	return marshalResult(profiles)
 }
 
 func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -64,7 +69,7 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	var profile *minderv1.Profile
 
 	if profileID != "" {
-		// Lookup by ID
+		// Lookup by ID - no project context needed
 		resp, err := client.Profiles().GetProfileById(ctx, &minderv1.GetProfileByIdRequest{
 			Id: profileID,
 		})
@@ -73,20 +78,22 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 		}
 		profile = resp.Profile
 	} else {
-		// Lookup by name
-		reqProto := &minderv1.GetProfileByNameRequest{
-			Name: name,
-		}
-		if projectID != "" {
-			reqProto.Context = &minderv1.Context{
-				Project: &projectID,
+		// Lookup by name - search across projects if none specified
+		profile, err = findInProjects(ctx, client, projectID, func(ctx context.Context, projID string) (*minderv1.Profile, error) {
+			resp, err := client.Profiles().GetProfileByName(ctx, &minderv1.GetProfileByNameRequest{
+				Name: name,
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
+			})
+			if err != nil {
+				return nil, err
 			}
-		}
-		resp, err := client.Profiles().GetProfileByName(ctx, reqProto)
+			return resp.Profile, nil
+		})
 		if err != nil {
 			return mcp.NewToolResultError(MapGRPCError(err)), nil
 		}
-		profile = resp.Profile
 	}
 
 	return marshalResult(profile)
@@ -115,7 +122,7 @@ func (t *Tools) getProfileStatus(ctx context.Context, req mcp.CallToolRequest) (
 	}
 
 	if profileID != "" {
-		// Lookup by ID
+		// Lookup by ID - no project context needed
 		resp, err := client.Profiles().GetProfileStatusById(ctx, &minderv1.GetProfileStatusByIdRequest{
 			Id:  profileID,
 			All: true, // Always request detailed per-rule evaluation results
@@ -126,18 +133,18 @@ func (t *Tools) getProfileStatus(ctx context.Context, req mcp.CallToolRequest) (
 		return marshalResult(resp)
 	}
 
-	// Lookup by name
-	reqProto := &minderv1.GetProfileStatusByNameRequest{
-		Name: name,
-		All:  true, // Always request detailed per-rule evaluation results
-	}
-	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
-		}
-	}
-
-	resp, err := client.Profiles().GetProfileStatusByName(ctx, reqProto)
+	// Lookup by name - search across projects if none specified
+	resp, err := findInProjects(
+		ctx, client, projectID,
+		func(ctx context.Context, projID string) (*minderv1.GetProfileStatusByNameResponse, error) {
+			return client.Profiles().GetProfileStatusByName(ctx, &minderv1.GetProfileStatusByNameRequest{
+				Name: name,
+				All:  true,
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
+			})
+		})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}

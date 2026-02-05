@@ -23,39 +23,65 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 	cursor := req.GetString("cursor", "")
 	limit := req.GetInt("limit", 0)
 
-	reqProto := &minderv1.ListRepositoriesRequest{}
-	if projectID != "" || provider != "" {
-		reqProto.Context = &minderv1.Context{}
-		if projectID != "" {
-			reqProto.Context.Project = &projectID
+	// Single project mode - preserves pagination
+	if projectID != "" {
+		reqProto := &minderv1.ListRepositoriesRequest{
+			Context: &minderv1.Context{
+				Project: &projectID,
+			},
 		}
 		if provider != "" {
 			reqProto.Context.Provider = &provider
 		}
+		if cursor != "" {
+			reqProto.Cursor = cursor
+		}
+		if limit > 0 && limit <= 100 {
+			reqProto.Limit = int64(limit) //nolint:gosec // limit is bounded by schema validation (1-100)
+		}
+
+		resp, err := client.Repositories().ListRepositories(ctx, reqProto)
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+
+		result := map[string]any{
+			"results": resp.Results,
+		}
+		if resp.Cursor != "" {
+			result["next_cursor"] = resp.Cursor
+			result["has_more"] = true
+		} else {
+			result["has_more"] = false
+		}
+		return marshalResult(result)
 	}
 
-	// Add pagination parameters
-	if cursor != "" {
-		reqProto.Cursor = cursor
-	}
-	if limit > 0 && limit <= 100 {
-		reqProto.Limit = int64(limit) //nolint:gosec // limit is bounded by schema validation (1-100)
-	}
-
-	resp, err := client.Repositories().ListRepositories(ctx, reqProto)
+	// Multi-project aggregation - pagination not supported
+	repos, err := forEachProject(
+		ctx, client, projectID,
+		func(ctx context.Context, projID string) ([]*minderv1.Repository, error) {
+			reqProto := &minderv1.ListRepositoriesRequest{
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
+			}
+			if provider != "" {
+				reqProto.Context.Provider = &provider
+			}
+			resp, err := client.Repositories().ListRepositories(ctx, reqProto)
+			if err != nil {
+				return nil, err
+			}
+			return resp.Results, nil
+		})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	// Build paginated response
 	result := map[string]any{
-		"results": resp.Results,
-	}
-	if resp.Cursor != "" {
-		result["next_cursor"] = resp.Cursor
-		result["has_more"] = true
-	} else {
-		result["has_more"] = false
+		"results":  repos,
+		"has_more": false,
 	}
 
 	return marshalResult(result)
@@ -89,7 +115,7 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 	var repository *minderv1.Repository
 
 	if repoID != "" {
-		// Lookup by ID
+		// Lookup by ID - no project context needed
 		resp, err := client.Repositories().GetRepositoryById(ctx, &minderv1.GetRepositoryByIdRequest{
 			RepositoryId: repoID,
 		})
@@ -98,25 +124,29 @@ func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mc
 		}
 		repository = resp.Repository
 	} else {
-		// Lookup by owner/name
+		// Lookup by owner/name - search across projects if none specified
 		fullName := owner + "/" + name
-		reqProto := &minderv1.GetRepositoryByNameRequest{
-			Name: fullName,
-		}
-		if projectID != "" || provider != "" {
-			reqProto.Context = &minderv1.Context{}
-			if projectID != "" {
-				reqProto.Context.Project = &projectID
-			}
-			if provider != "" {
-				reqProto.Context.Provider = &provider
-			}
-		}
-		resp, err := client.Repositories().GetRepositoryByName(ctx, reqProto)
+		repository, err = findInProjects(
+			ctx, client, projectID,
+			func(ctx context.Context, projID string) (*minderv1.Repository, error) {
+				reqProto := &minderv1.GetRepositoryByNameRequest{
+					Name: fullName,
+					Context: &minderv1.Context{
+						Project: &projID,
+					},
+				}
+				if provider != "" {
+					reqProto.Context.Provider = &provider
+				}
+				resp, err := client.Repositories().GetRepositoryByName(ctx, reqProto)
+				if err != nil {
+					return nil, err
+				}
+				return resp.Repository, nil
+			})
 		if err != nil {
 			return mcp.NewToolResultError(MapGRPCError(err)), nil
 		}
-		repository = resp.Repository
 	}
 
 	return marshalResult(repository)

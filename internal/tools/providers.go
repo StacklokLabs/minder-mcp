@@ -22,35 +22,59 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 	cursor := req.GetString("cursor", "")
 	limit := req.GetInt("limit", 0)
 
-	reqProto := &minderv1.ListProvidersRequest{}
+	// Single project mode - preserves pagination
 	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
+		reqProto := &minderv1.ListProvidersRequest{
+			Context: &minderv1.Context{
+				Project: &projectID,
+			},
 		}
+		if cursor != "" {
+			reqProto.Cursor = cursor
+		}
+		if limit > 0 && limit <= 100 {
+			reqProto.Limit = int32(limit) //nolint:gosec // limit is bounded by schema validation (1-100)
+		}
+
+		resp, err := client.Providers().ListProviders(ctx, reqProto)
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+
+		result := map[string]any{
+			"results": resp.Providers,
+		}
+		if resp.Cursor != "" {
+			result["next_cursor"] = resp.Cursor
+			result["has_more"] = true
+		} else {
+			result["has_more"] = false
+		}
+		return marshalResult(result)
 	}
 
-	// Add pagination parameters
-	if cursor != "" {
-		reqProto.Cursor = cursor
-	}
-	if limit > 0 && limit <= 100 {
-		reqProto.Limit = int32(limit) //nolint:gosec // limit is bounded by schema validation (1-100)
-	}
-
-	resp, err := client.Providers().ListProviders(ctx, reqProto)
+	// Multi-project aggregation - pagination not supported
+	providers, err := forEachProject(
+		ctx, client, projectID,
+		func(ctx context.Context, projID string) ([]*minderv1.Provider, error) {
+			reqProto := &minderv1.ListProvidersRequest{
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
+			}
+			resp, err := client.Providers().ListProviders(ctx, reqProto)
+			if err != nil {
+				return nil, err
+			}
+			return resp.Providers, nil
+		})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	// Build paginated response
 	result := map[string]any{
-		"results": resp.Providers,
-	}
-	if resp.Cursor != "" {
-		result["next_cursor"] = resp.Cursor
-		result["has_more"] = true
-	} else {
-		result["has_more"] = false
+		"results":  providers,
+		"has_more": false,
 	}
 
 	return marshalResult(result)
@@ -74,19 +98,22 @@ func (t *Tools) getProvider(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		return mcp.NewToolResultError("name is required"), nil
 	}
 
-	reqProto := &minderv1.GetProviderRequest{
-		Name: name,
-	}
-	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
+	// Search across projects if none specified
+	provider, err := findInProjects(ctx, client, projectID, func(ctx context.Context, projID string) (*minderv1.Provider, error) {
+		resp, err := client.Providers().GetProvider(ctx, &minderv1.GetProviderRequest{
+			Name: name,
+			Context: &minderv1.Context{
+				Project: &projID,
+			},
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	resp, err := client.Providers().GetProvider(ctx, reqProto)
+		return resp.Provider, nil
+	})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	return marshalResult(resp.Provider)
+	return marshalResult(provider)
 }

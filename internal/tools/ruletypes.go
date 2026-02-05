@@ -20,19 +20,23 @@ func (t *Tools) listRuleTypes(ctx context.Context, req mcp.CallToolRequest) (*mc
 
 	projectID := req.GetString("project_id", "")
 
-	reqProto := &minderv1.ListRuleTypesRequest{}
-	if projectID != "" {
-		reqProto.Context = &minderv1.Context{
-			Project: &projectID,
+	// Use multi-project aggregation when no project_id specified
+	ruleTypes, err := forEachProject(ctx, client, projectID, func(ctx context.Context, projID string) ([]*minderv1.RuleType, error) {
+		resp, err := client.RuleTypes().ListRuleTypes(ctx, &minderv1.ListRuleTypesRequest{
+			Context: &minderv1.Context{
+				Project: &projID,
+			},
+		})
+		if err != nil {
+			return nil, err
 		}
-	}
-
-	resp, err := client.RuleTypes().ListRuleTypes(ctx, reqProto)
+		return resp.RuleTypes, nil
+	})
 	if err != nil {
 		return mcp.NewToolResultError(MapGRPCError(err)), nil
 	}
 
-	return marshalResult(resp.RuleTypes)
+	return marshalResult(ruleTypes)
 }
 
 func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -60,7 +64,7 @@ func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 	var ruleType *minderv1.RuleType
 
 	if ruleTypeID != "" {
-		// Lookup by ID
+		// Lookup by ID - no project context needed
 		resp, err := client.RuleTypes().GetRuleTypeById(ctx, &minderv1.GetRuleTypeByIdRequest{
 			Id: ruleTypeID,
 		})
@@ -69,20 +73,22 @@ func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		}
 		ruleType = resp.RuleType
 	} else {
-		// Lookup by name
-		reqProto := &minderv1.GetRuleTypeByNameRequest{
-			Name: name,
-		}
-		if projectID != "" {
-			reqProto.Context = &minderv1.Context{
-				Project: &projectID,
+		// Lookup by name - search across projects if none specified
+		ruleType, err = findInProjects(ctx, client, projectID, func(ctx context.Context, projID string) (*minderv1.RuleType, error) {
+			resp, err := client.RuleTypes().GetRuleTypeByName(ctx, &minderv1.GetRuleTypeByNameRequest{
+				Name: name,
+				Context: &minderv1.Context{
+					Project: &projID,
+				},
+			})
+			if err != nil {
+				return nil, err
 			}
-		}
-		resp, err := client.RuleTypes().GetRuleTypeByName(ctx, reqProto)
+			return resp.RuleType, nil
+		})
 		if err != nil {
 			return mcp.NewToolResultError(MapGRPCError(err)), nil
 		}
-		ruleType = resp.RuleType
 	}
 
 	return marshalResult(ruleType)
