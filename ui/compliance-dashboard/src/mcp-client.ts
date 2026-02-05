@@ -66,6 +66,11 @@ export class MCPAppsClient {
     this.onToolResultCallback = callback;
     this.app.ontoolresult = (result): void => {
       console.log('[MCP] Received tool result notification:', result);
+      // Defensive null check - some hosts may pass null/undefined
+      if (!result) {
+        console.warn('[MCP] Received null/undefined tool result');
+        return;
+      }
       if (this.onToolResultCallback) {
         this.onToolResultCallback(result);
       }
@@ -80,6 +85,11 @@ export class MCPAppsClient {
     this.onToolInputCallback = callback;
     this.app.ontoolinput = (input): void => {
       console.log('[MCP] Received tool input notification:', input);
+      // Defensive null check - some hosts may pass null/undefined
+      if (!input) {
+        console.warn('[MCP] Received null/undefined tool input');
+        return;
+      }
       if (this.onToolInputCallback) {
         this.onToolInputCallback(input);
       }
@@ -94,6 +104,11 @@ export class MCPAppsClient {
     this.onDimensionsCallback = callback;
     this.app.onhostcontextchanged = (context): void => {
       console.log('[MCP] Received host context change:', context);
+      // Defensive null check - some hosts (e.g., Goose) may pass null/undefined
+      if (!context) {
+        console.warn('[MCP] Received null/undefined host context change');
+        return;
+      }
       if (context.containerDimensions && this.onDimensionsCallback) {
         const dims = context.containerDimensions as ContainerDimensions;
         this.onDimensionsCallback(dims);
@@ -117,9 +132,19 @@ export class MCPAppsClient {
    * Check if the host supports calling server tools directly.
    */
   supportsServerTools(): boolean {
-    const caps = this.app.getHostCapabilities();
-    // serverTools is an object when supported, undefined when not
-    return caps?.serverTools !== undefined;
+    try {
+      const caps = this.app.getHostCapabilities();
+      // serverTools is an object when supported, undefined when not
+      // Some hosts may return null instead of an object
+      if (!caps) {
+        console.log('[MCP] Host capabilities is null/undefined');
+        return false;
+      }
+      return caps.serverTools !== undefined;
+    } catch (error) {
+      console.warn('[MCP] Error checking host capabilities:', error);
+      return false;
+    }
   }
 
   async disconnect(): Promise<void> {
@@ -166,8 +191,14 @@ export class MCPAppsClient {
 
     const result = await this.app.callServerTool({
       name,
-      arguments: args,
+      arguments: args ?? {},
     });
+
+    // Defensive null check for result
+    if (!result) {
+      console.warn('[MCP] callServerTool returned null/undefined');
+      throw new Error('Tool call returned no result');
+    }
 
     // Extract the content from the tool result
     if (
@@ -177,6 +208,7 @@ export class MCPAppsClient {
     ) {
       const firstContent = result.content[0];
       if (
+        firstContent &&
         firstContent.type === 'text' &&
         typeof firstContent.text === 'string'
       ) {

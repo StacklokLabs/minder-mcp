@@ -153,15 +153,23 @@ export function initDashboard(): void {
  * This is called when the LLM invokes a Minder tool and the host pushes the result.
  */
 function handleToolResult(result: ToolResultParams): void {
+  // Defensive null check - result may be null/undefined from some hosts
+  if (!result) {
+    console.warn('[Dashboard] Received null/undefined tool result');
+    return;
+  }
+
   // Extract the tool name and content from the result
   // The result may contain structuredContent or content array
   let data: unknown = null;
 
   // Check for structuredContent first (preferred for rich data)
+  // Use defensive access to avoid "Cannot convert undefined or null to object"
   const structuredContent = result.structuredContent as
     | Record<string, unknown>
-    | undefined;
-  if (structuredContent) {
+    | undefined
+    | null;
+  if (structuredContent && typeof structuredContent === 'object') {
     data = structuredContent;
   } else if (
     result.content &&
@@ -267,6 +275,11 @@ function isRepositoriesApiResponse(data: unknown): data is RepositoriesApiRespon
  * Extracts project_id from arguments for use in subsequent calls.
  */
 function handleToolInput(input: ToolInputParams): void {
+  // Defensive null check - input may be null/undefined from some hosts
+  if (!input) {
+    console.warn('[Dashboard] Received null/undefined tool input');
+    return;
+  }
   // Extract project_id from the tool arguments if present
   const args = input.arguments as Record<string, unknown> | undefined;
   if (args && typeof args.project_id === 'string' && args.project_id) {
