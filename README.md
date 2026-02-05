@@ -53,7 +53,7 @@ The server supports two authentication methods (in priority order):
 ### Profiles
 - `minder_list_profiles` - List all profiles
 - `minder_get_profile` - Get a profile by ID or name
-- `minder_get_profile_status_by_name` - Get profile evaluation status
+- `minder_get_profile_status` - Get profile evaluation status by ID or name
 
 ### Rule Types
 - `minder_list_rule_types` - List all rule types
