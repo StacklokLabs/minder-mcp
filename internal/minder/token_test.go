@@ -207,6 +207,43 @@ func TestDiscoverRealmURL(t *testing.T) {
 	}
 }
 
+func TestDiscoverRealmURL_GrpcMetadataHeader(t *testing.T) {
+	t.Parallel()
+
+	// Create a test server that returns both headers (like real gRPC-gateway)
+	// The grpc-metadata header has the correct realm, the www-authenticate has garbage
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Grpc-Metadata-Www-Authenticate", `Bearer realm="https://auth.example.com/realms/test"`)
+		w.Header().Set("WWW-Authenticate", `Unauthenticated indicates the request does not have valid credentials`)
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	host := strings.TrimPrefix(server.URL, "http://")
+	parts := strings.Split(host, ":")
+	var port int
+	if _, err := fmt.Sscanf(parts[1], "%d", &port); err != nil {
+		t.Fatalf("failed to parse port: %v", err)
+	}
+
+	refresher := NewTokenRefresher()
+	defer refresher.Close()
+
+	cfg := ServerConfig{
+		Host:     parts[0],
+		Port:     port,
+		Insecure: true,
+	}
+
+	realmURL, err := refresher.discoverRealmURL(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if realmURL != "https://auth.example.com/realms/test" {
+		t.Errorf("realmURL = %q, want %q", realmURL, "https://auth.example.com/realms/test")
+	}
+}
+
 func TestDiscoverRealmURL_NoHeader(t *testing.T) {
 	t.Parallel()
 

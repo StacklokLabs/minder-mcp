@@ -339,10 +339,10 @@ func (t *TokenRefresher) discoverRealmURL(ctx context.Context, cfg ServerConfig)
 	}()
 
 	// Look for WWW-Authenticate header
-	wwwAuth := resp.Header.Get("WWW-Authenticate")
+	// Check gRPC-gateway metadata header first (more reliable for gRPC services)
+	wwwAuth := resp.Header.Get("Grpc-Metadata-Www-Authenticate")
 	if wwwAuth == "" {
-		// Try grpc-metadata-www-authenticate as fallback (gRPC-gateway)
-		wwwAuth = resp.Header.Get("Grpc-Metadata-Www-Authenticate")
+		wwwAuth = resp.Header.Get("WWW-Authenticate")
 	}
 	if wwwAuth == "" {
 		return "", errors.New("server did not return authentication realm information")
@@ -350,6 +350,13 @@ func (t *TokenRefresher) discoverRealmURL(ctx context.Context, cfg ServerConfig)
 
 	// Parse the realm from the header
 	realmURL := extractRealmFromWWWAuthenticate(wwwAuth)
+	if realmURL == "" {
+		// Try the other header if the first one didn't have a valid realm
+		altHeader := resp.Header.Get("WWW-Authenticate")
+		if altHeader != "" && altHeader != wwwAuth {
+			realmURL = extractRealmFromWWWAuthenticate(altHeader)
+		}
+	}
 	if realmURL == "" {
 		return "", errors.New("could not parse authentication realm from server response")
 	}
