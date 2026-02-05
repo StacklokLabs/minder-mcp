@@ -15,7 +15,9 @@ const (
 	// DashboardURI is the resource URI for the compliance dashboard.
 	DashboardURI = "ui://minder/compliance-dashboard"
 	// DashboardMIMEType is the MIME type for the compliance dashboard.
-	DashboardMIMEType = "text/html"
+	// The profile=mcp-app suffix indicates this is an MCP App that should be
+	// rendered in a sandboxed iframe with full MCP Apps capabilities.
+	DashboardMIMEType = "text/html;profile=mcp-app"
 )
 
 // Resources holds the resource handlers and configuration.
