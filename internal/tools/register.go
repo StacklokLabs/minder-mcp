@@ -167,21 +167,25 @@ func (t *Tools) Register(s *server.MCPServer) {
 		),
 	), t.wrapHandler("minder_get_profile", t.getProfile))
 
-	s.AddTool(mcp.NewTool("minder_get_profile_status_by_name",
-		mcp.WithDescription("Get the current evaluation status of a profile. "+
+	s.AddTool(mcp.NewTool("minder_get_profile_status",
+		mcp.WithDescription("Get the current evaluation status of a profile by ID or name. "+
+			"Use profile_id for UUID lookup, or name for name lookup. "+
 			"Returns compliance status and detailed per-rule evaluation results for all entities."),
 		mcp.WithTitleAnnotation("Get Profile Status"),
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithString("profile_id",
+			mcp.Title("Profile ID"),
+			mcp.Description("UUID of the profile. Mutually exclusive with name"),
+		),
 		mcp.WithString("name",
-			mcp.Required(),
 			mcp.Title("Profile Name"),
-			mcp.Description("Name of the profile to check status for"),
+			mcp.Description("Name of the profile. Mutually exclusive with profile_id"),
 		),
 		mcp.WithString("project_id",
 			mcp.Title("Project ID"),
-			mcp.Description("Project UUID to scope the lookup. Omit to search all accessible projects"),
+			mcp.Description("Project scope. Only valid with name lookup"),
 		),
-	), t.wrapHandler("minder_get_profile_status_by_name", t.getProfileStatusByName))
+	), t.wrapHandler("minder_get_profile_status", t.getProfileStatus))
 
 	// Rule Types
 	s.AddTool(mcp.NewTool("minder_list_rule_types",

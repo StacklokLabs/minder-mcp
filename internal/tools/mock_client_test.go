@@ -63,15 +63,18 @@ func (m *mockHealthService) CheckHealth(_ context.Context, _ *minderv1.CheckHeal
 
 type mockProfileService struct {
 	minderv1.ProfileServiceClient
-	listResp      *minderv1.ListProfilesResponse
-	listErr       error
-	getByIDResp   *minderv1.GetProfileByIdResponse
-	getByIDErr    error
-	getByNameResp *minderv1.GetProfileByNameResponse
-	getByNameErr  error
-	getStatusResp *minderv1.GetProfileStatusByNameResponse
-	getStatusErr  error
-	getStatusReq  *minderv1.GetProfileStatusByNameRequest // captured request
+	listResp            *minderv1.ListProfilesResponse
+	listErr             error
+	getByIDResp         *minderv1.GetProfileByIdResponse
+	getByIDErr          error
+	getByNameResp       *minderv1.GetProfileByNameResponse
+	getByNameErr        error
+	getStatusByNameResp *minderv1.GetProfileStatusByNameResponse
+	getStatusByNameErr  error
+	getStatusByNameReq  *minderv1.GetProfileStatusByNameRequest // captured request
+	getStatusByIDResp   *minderv1.GetProfileStatusByIdResponse
+	getStatusByIDErr    error
+	getStatusByIDReq    *minderv1.GetProfileStatusByIdRequest // captured request
 }
 
 func (m *mockProfileService) ListProfiles(_ context.Context, _ *minderv1.ListProfilesRequest, _ ...grpc.CallOption) (*minderv1.ListProfilesResponse, error) {
@@ -87,8 +90,13 @@ func (m *mockProfileService) GetProfileByName(_ context.Context, _ *minderv1.Get
 }
 
 func (m *mockProfileService) GetProfileStatusByName(_ context.Context, req *minderv1.GetProfileStatusByNameRequest, _ ...grpc.CallOption) (*minderv1.GetProfileStatusByNameResponse, error) {
-	m.getStatusReq = req
-	return m.getStatusResp, m.getStatusErr
+	m.getStatusByNameReq = req
+	return m.getStatusByNameResp, m.getStatusByNameErr
+}
+
+func (m *mockProfileService) GetProfileStatusById(_ context.Context, req *minderv1.GetProfileStatusByIdRequest, _ ...grpc.CallOption) (*minderv1.GetProfileStatusByIdResponse, error) {
+	m.getStatusByIDReq = req
+	return m.getStatusByIDResp, m.getStatusByIDErr
 }
 
 type mockRepositoryService struct {

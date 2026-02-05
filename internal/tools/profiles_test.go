@@ -195,7 +195,7 @@ func TestGetProfile(t *testing.T) {
 	}
 }
 
-func TestGetProfileStatusByName(t *testing.T) {
+func TestGetProfileStatus(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -207,9 +207,9 @@ func TestGetProfileStatusByName(t *testing.T) {
 		checkReq    func(*testing.T, *mockMinderClient)
 	}{
 		{
-			name: "gets status successfully with All flag set",
+			name: "gets status by name successfully with All flag set",
 			mockSetup: func(m *mockMinderClient) {
-				m.profiles.getStatusResp = &minderv1.GetProfileStatusByNameResponse{
+				m.profiles.getStatusByNameResp = &minderv1.GetProfileStatusByNameResponse{
 					ProfileStatus: &minderv1.ProfileStatus{
 						ProfileName: "test-profile",
 					},
@@ -219,30 +219,77 @@ func TestGetProfileStatusByName(t *testing.T) {
 			wantErr: false,
 			checkReq: func(t *testing.T, m *mockMinderClient) {
 				t.Helper()
-				if m.profiles.getStatusReq == nil {
+				if m.profiles.getStatusByNameReq == nil {
 					t.Fatal("expected request to be captured")
 				}
-				if !m.profiles.getStatusReq.All {
+				if !m.profiles.getStatusByNameReq.All {
 					t.Error("expected All flag to be true for detailed evaluation results")
 				}
-				if m.profiles.getStatusReq.Name != "test-profile" {
-					t.Errorf("expected name %q, got %q", "test-profile", m.profiles.getStatusReq.Name)
+				if m.profiles.getStatusByNameReq.Name != "test-profile" {
+					t.Errorf("expected name %q, got %q", "test-profile", m.profiles.getStatusByNameReq.Name)
 				}
 			},
 		},
 		{
-			name:        "error when name not provided",
+			name: "gets status by ID successfully with All flag set",
+			mockSetup: func(m *mockMinderClient) {
+				m.profiles.getStatusByIDResp = &minderv1.GetProfileStatusByIdResponse{
+					ProfileStatus: &minderv1.ProfileStatus{
+						ProfileId: "prof-123",
+					},
+				}
+			},
+			params:  map[string]any{"profile_id": "prof-123"},
+			wantErr: false,
+			checkReq: func(t *testing.T, m *mockMinderClient) {
+				t.Helper()
+				if m.profiles.getStatusByIDReq == nil {
+					t.Fatal("expected request to be captured")
+				}
+				if !m.profiles.getStatusByIDReq.All {
+					t.Error("expected All flag to be true for detailed evaluation results")
+				}
+				if m.profiles.getStatusByIDReq.Id != "prof-123" {
+					t.Errorf("expected ID %q, got %q", "prof-123", m.profiles.getStatusByIDReq.Id)
+				}
+			},
+		},
+		{
+			name:        "error when neither ID nor name provided",
 			mockSetup:   func(_ *mockMinderClient) {},
 			params:      map[string]any{},
 			wantErr:     true,
-			errContains: "name is required",
+			errContains: "must be provided",
 		},
 		{
-			name: "handles gRPC error",
+			name:        "error when both ID and name provided",
+			mockSetup:   func(_ *mockMinderClient) {},
+			params:      map[string]any{"profile_id": "123", "name": "test"},
+			wantErr:     true,
+			errContains: "cannot specify both",
+		},
+		{
+			name:        "error when project_id provided with ID lookup",
+			mockSetup:   func(_ *mockMinderClient) {},
+			params:      map[string]any{"profile_id": "123", "project_id": "proj-456"},
+			wantErr:     true,
+			errContains: "not used with profile_id lookup",
+		},
+		{
+			name: "handles gRPC error for name lookup",
 			mockSetup: func(m *mockMinderClient) {
-				m.profiles.getStatusErr = status.Error(codes.NotFound, "profile not found")
+				m.profiles.getStatusByNameErr = status.Error(codes.NotFound, "profile not found")
 			},
 			params:      map[string]any{"name": "missing"},
+			wantErr:     true,
+			errContains: "Not found",
+		},
+		{
+			name: "handles gRPC error for ID lookup",
+			mockSetup: func(m *mockMinderClient) {
+				m.profiles.getStatusByIDErr = status.Error(codes.NotFound, "profile not found")
+			},
+			params:      map[string]any{"profile_id": "nonexistent"},
 			wantErr:     true,
 			errContains: "Not found",
 		},
@@ -260,9 +307,9 @@ func TestGetProfileStatusByName(t *testing.T) {
 			req := mcp.CallToolRequest{}
 			req.Params.Arguments = tt.params
 
-			result, err := tools.getProfileStatusByName(context.Background(), req)
+			result, err := tools.getProfileStatus(context.Background(), req)
 			if err != nil {
-				t.Fatalf("getProfileStatusByName() returned Go error: %v", err)
+				t.Fatalf("getProfileStatus() returned Go error: %v", err)
 			}
 
 			if tt.wantErr {

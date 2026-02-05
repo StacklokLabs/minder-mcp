@@ -92,7 +92,18 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	return marshalResult(profile)
 }
 
-func (t *Tools) getProfileStatusByName(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (t *Tools) getProfileStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	profileID := req.GetString("profile_id", "")
+	name := req.GetString("name", "")
+	projectID := req.GetString("project_id", "")
+
+	// Validate parameters
+	if errMsg := ValidateLookupParams(profileID, name, "profile_id", "name", map[string]string{
+		"project_id": projectID,
+	}); errMsg != "" {
+		return mcp.NewToolResultError(errMsg), nil
+	}
+
 	client, err := t.getClient(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -103,13 +114,19 @@ func (t *Tools) getProfileStatusByName(ctx context.Context, req mcp.CallToolRequ
 		return errResult, nil
 	}
 
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
-
-	if name == "" {
-		return mcp.NewToolResultError("name is required"), nil
+	if profileID != "" {
+		// Lookup by ID
+		resp, err := client.Profiles().GetProfileStatusById(ctx, &minderv1.GetProfileStatusByIdRequest{
+			Id:  profileID,
+			All: true, // Always request detailed per-rule evaluation results
+		})
+		if err != nil {
+			return mcp.NewToolResultError(MapGRPCError(err)), nil
+		}
+		return marshalResult(resp)
 	}
 
+	// Lookup by name
 	reqProto := &minderv1.GetProfileStatusByNameRequest{
 		Name: name,
 		All:  true, // Always request detailed per-rule evaluation results
