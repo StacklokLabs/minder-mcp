@@ -8,7 +8,7 @@ require (
 	github.com/mindersec/minder v0.1.1
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/oauth2 v0.34.0
+	golang.org/x/oauth2 v0.35.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 )
