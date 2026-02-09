@@ -132,7 +132,7 @@ tasks:
       - sh: command -v golangci-lint
         msg: "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
     cmds:
-      - golangci-lint run ./...
+      - golangci-lint run --allow-parallel-runners ./...
 
   lint:go:fix:
     desc: Lint Go code with auto-fix
@@ -142,7 +142,7 @@ tasks:
       - sh: command -v golangci-lint
         msg: "golangci-lint not found. Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
     cmds:
-      - golangci-lint run --fix ./...
+      - golangci-lint run --allow-parallel-runners --fix ./...
 
   lint:ui:
     desc: Lint UI code (ESLint + TypeScript + Prettier)
