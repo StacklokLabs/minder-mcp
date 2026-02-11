@@ -7,5 +7,12 @@
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": ["before 5am on monday"]
-  }
+  },
+  "packageRules": [
+    {
+      "groupName": "eslint monorepo",
+      "matchPackageNames": ["eslint", "typescript-eslint"],
+      "matchFileNames": ["ui/compliance-dashboard/**"]
+    }
+  ]
 }
