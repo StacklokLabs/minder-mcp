@@ -63,6 +63,7 @@ func main() {
 			token = cfg.Minder.AuthToken
 			source = "config"
 		}
+		//nolint:gosec // G706 - source is a string literal, not user input
 		slog.Debug("auth context", "has_token", token != "", "source", source)
 		return middleware.ContextWithToken(ctx, token)
 	}
