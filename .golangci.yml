@@ -79,6 +79,7 @@ linters:
           - errcheck
           - dupl
           - gosec
+          - goconst
         path: (.+)_test\.go
       - linters:
           - lll
@@ -87,7 +88,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
-      - node_modules$
+      - (^|/)node_modules(/|$)
 formatters:
   enable:
     - gci
@@ -104,4 +105,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
-      - node_modules$
+      - (^|/)node_modules(/|$)

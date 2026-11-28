@@ -18,9 +18,9 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
-	cursor := req.GetString("cursor", "")
-	limit := req.GetInt("limit", 0)
+	projectID := req.GetString(paramProjectID, "")
+	cursor := req.GetString(paramCursor, "")
+	limit := req.GetInt(paramLimit, 0)
 
 	// Single project mode - preserves pagination
 	if projectID != "" {
@@ -42,13 +42,13 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 		}
 
 		result := map[string]any{
-			"results": resp.Providers,
+			keyResults: resp.Providers,
 		}
 		if resp.Cursor != "" {
-			result["next_cursor"] = resp.Cursor
-			result["has_more"] = true
+			result[keyNextCursor] = resp.Cursor
+			result[keyHasMore] = true
 		} else {
-			result["has_more"] = false
+			result[keyHasMore] = false
 		}
 		return marshalResult(result)
 	}
@@ -73,8 +73,8 @@ func (t *Tools) listProviders(ctx context.Context, req mcp.CallToolRequest) (*mc
 	}
 
 	result := map[string]any{
-		"results":  providers,
-		"has_more": false,
+		keyResults: providers,
+		keyHasMore: false,
 	}
 
 	return marshalResult(result)
@@ -91,8 +91,8 @@ func (t *Tools) getProvider(ctx context.Context, req mcp.CallToolRequest) (*mcp.
 		return errResult, nil
 	}
 
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
 
 	if name == "" {
 		return mcp.NewToolResultError("name is required"), nil

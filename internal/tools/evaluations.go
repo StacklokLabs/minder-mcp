@@ -21,7 +21,7 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
+	projectID := req.GetString(paramProjectID, "")
 	profileName := req.GetString("profile_name", "")
 	entityType := req.GetString("entity_type", "")
 	entityName := req.GetString("entity_name", "")
@@ -30,7 +30,7 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 	alertStatus := req.GetString("alert_status", "")
 	fromStr := req.GetString("from", "")
 	toStr := req.GetString("to", "")
-	cursor := req.GetString("cursor", "")
+	cursor := req.GetString(paramCursor, "")
 	pageSize := req.GetInt("page_size", 0)
 	labelFilter := req.GetString("label_filter", "*") // Default to "*" to include all profiles
 
@@ -109,7 +109,7 @@ func (t *Tools) listEvaluationHistory(ctx context.Context, req mcp.CallToolReque
 
 	// Build response (pagination info not reliable when aggregating multiple projects)
 	result := map[string]any{
-		"results": evaluations,
+		keyResults: evaluations,
 	}
 
 	return marshalResult(result)
