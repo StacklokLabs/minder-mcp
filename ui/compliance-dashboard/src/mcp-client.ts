@@ -1,9 +1,15 @@
 import {
   App,
   PostMessageTransport,
+  type McpUiHostContextChangedNotification,
   type McpUiToolResultNotification,
   type McpUiToolInputNotification,
 } from '@modelcontextprotocol/ext-apps';
+
+/**
+ * Type for host context changed notification params.
+ */
+type HostContextChangedParams = McpUiHostContextChangedNotification['params'];
 
 /**
  * Type for tool result notification params.
@@ -50,6 +56,10 @@ export class MCPAppsClient {
   private onToolResultCallback: ToolResultCallback | null = null;
   private onToolInputCallback: ToolInputCallback | null = null;
   private onDimensionsCallback: DimensionsCallback | null = null;
+  private toolResultHandler: ((result: ToolResultParams) => void) | null = null;
+  private toolInputHandler: ((input: ToolInputParams) => void) | null = null;
+  private hostContextHandler:
+    ((context: HostContextChangedParams) => void) | null = null;
 
   constructor() {
     this.app = new App({
@@ -64,17 +74,20 @@ export class MCPAppsClient {
    */
   onToolResult(callback: ToolResultCallback): void {
     this.onToolResultCallback = callback;
-    this.app.ontoolresult = (result): void => {
-      console.log('[MCP] Received tool result notification:', result);
-      // Defensive null check - some hosts may pass null/undefined
-      if (!result) {
-        console.warn('[MCP] Received null/undefined tool result');
-        return;
-      }
-      if (this.onToolResultCallback) {
-        this.onToolResultCallback(result);
-      }
-    };
+    if (!this.toolResultHandler) {
+      this.toolResultHandler = (result: ToolResultParams): void => {
+        console.log('[MCP] Received tool result notification:', result);
+        // Defensive null check - some hosts may pass null/undefined
+        if (!result) {
+          console.warn('[MCP] Received null/undefined tool result');
+          return;
+        }
+        if (this.onToolResultCallback) {
+          this.onToolResultCallback(result);
+        }
+      };
+      this.app.addEventListener('toolresult', this.toolResultHandler);
+    }
   }
 
   /**
@@ -83,17 +96,20 @@ export class MCPAppsClient {
    */
   onToolInput(callback: ToolInputCallback): void {
     this.onToolInputCallback = callback;
-    this.app.ontoolinput = (input): void => {
-      console.log('[MCP] Received tool input notification:', input);
-      // Defensive null check - some hosts may pass null/undefined
-      if (!input) {
-        console.warn('[MCP] Received null/undefined tool input');
-        return;
-      }
-      if (this.onToolInputCallback) {
-        this.onToolInputCallback(input);
-      }
-    };
+    if (!this.toolInputHandler) {
+      this.toolInputHandler = (input: ToolInputParams): void => {
+        console.log('[MCP] Received tool input notification:', input);
+        // Defensive null check - some hosts may pass null/undefined
+        if (!input) {
+          console.warn('[MCP] Received null/undefined tool input');
+          return;
+        }
+        if (this.onToolInputCallback) {
+          this.onToolInputCallback(input);
+        }
+      };
+      this.app.addEventListener('toolinput', this.toolInputHandler);
+    }
   }
 
   /**
@@ -102,18 +118,21 @@ export class MCPAppsClient {
    */
   onDimensionsChange(callback: DimensionsCallback): void {
     this.onDimensionsCallback = callback;
-    this.app.onhostcontextchanged = (context): void => {
-      console.log('[MCP] Received host context change:', context);
-      // Defensive null check - some hosts (e.g., Goose) may pass null/undefined
-      if (!context) {
-        console.warn('[MCP] Received null/undefined host context change');
-        return;
-      }
-      if (context.containerDimensions && this.onDimensionsCallback) {
-        const dims = context.containerDimensions as ContainerDimensions;
-        this.onDimensionsCallback(dims);
-      }
-    };
+    if (!this.hostContextHandler) {
+      this.hostContextHandler = (context: HostContextChangedParams): void => {
+        console.log('[MCP] Received host context change:', context);
+        // Defensive null check - some hosts (e.g., Goose) may pass null/undefined
+        if (!context) {
+          console.warn('[MCP] Received null/undefined host context change');
+          return;
+        }
+        if (context.containerDimensions && this.onDimensionsCallback) {
+          const dims = context.containerDimensions as ContainerDimensions;
+          this.onDimensionsCallback(dims);
+        }
+      };
+      this.app.addEventListener('hostcontextchanged', this.hostContextHandler);
+    }
   }
 
   async connect(): Promise<void> {

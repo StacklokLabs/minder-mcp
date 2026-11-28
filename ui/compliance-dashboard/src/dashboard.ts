@@ -168,9 +168,7 @@ function handleToolResult(result: ToolResultParams): void {
   // Check for structuredContent first (preferred for rich data)
   // Use defensive access to avoid "Cannot convert undefined or null to object"
   const structuredContent = result.structuredContent as
-    | Record<string, unknown>
-    | undefined
-    | null;
+    Record<string, unknown> | undefined | null;
   if (structuredContent && typeof structuredContent === 'object') {
     data = structuredContent;
   } else if (
