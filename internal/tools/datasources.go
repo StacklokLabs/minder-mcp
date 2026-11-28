@@ -18,7 +18,7 @@ func (t *Tools) listDataSources(ctx context.Context, req mcp.CallToolRequest) (*
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
+	projectID := req.GetString(paramProjectID, "")
 
 	// Use multi-project aggregation when no project_id specified
 	dataSources, err := forEachProject(
@@ -43,12 +43,12 @@ func (t *Tools) listDataSources(ctx context.Context, req mcp.CallToolRequest) (*
 
 func (t *Tools) getDataSource(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	dataSourceID := req.GetString("data_source_id", "")
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(dataSourceID, name, "data_source_id", "name", map[string]string{
-		"project_id": projectID,
+	if errMsg := ValidateLookupParams(dataSourceID, name, "data_source_id", paramName, map[string]string{
+		paramProjectID: projectID,
 	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}

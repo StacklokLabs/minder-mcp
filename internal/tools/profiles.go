@@ -18,7 +18,7 @@ func (t *Tools) listProfiles(ctx context.Context, req mcp.CallToolRequest) (*mcp
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
+	projectID := req.GetString(paramProjectID, "")
 	labelFilter := req.GetString("label_filter", "")
 
 	// Use multi-project aggregation when no project_id specified
@@ -46,12 +46,12 @@ func (t *Tools) listProfiles(ctx context.Context, req mcp.CallToolRequest) (*mcp
 
 func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	profileID := req.GetString("profile_id", "")
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(profileID, name, "profile_id", "name", map[string]string{
-		"project_id": projectID,
+	if errMsg := ValidateLookupParams(profileID, name, "profile_id", paramName, map[string]string{
+		paramProjectID: projectID,
 	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
@@ -101,12 +101,12 @@ func (t *Tools) getProfile(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 
 func (t *Tools) getProfileStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	profileID := req.GetString("profile_id", "")
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(profileID, name, "profile_id", "name", map[string]string{
-		"project_id": projectID,
+	if errMsg := ValidateLookupParams(profileID, name, "profile_id", paramName, map[string]string{
+		paramProjectID: projectID,
 	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}

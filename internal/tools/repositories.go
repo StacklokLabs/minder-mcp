@@ -18,10 +18,10 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
-	provider := req.GetString("provider", "")
-	cursor := req.GetString("cursor", "")
-	limit := req.GetInt("limit", 0)
+	projectID := req.GetString(paramProjectID, "")
+	provider := req.GetString(paramProvider, "")
+	cursor := req.GetString(paramCursor, "")
+	limit := req.GetInt(paramLimit, 0)
 
 	// Single project mode - preserves pagination
 	if projectID != "" {
@@ -46,13 +46,13 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 		}
 
 		result := map[string]any{
-			"results": resp.Results,
+			keyResults: resp.Results,
 		}
 		if resp.Cursor != "" {
-			result["next_cursor"] = resp.Cursor
-			result["has_more"] = true
+			result[keyNextCursor] = resp.Cursor
+			result[keyHasMore] = true
 		} else {
-			result["has_more"] = false
+			result[keyHasMore] = false
 		}
 		return marshalResult(result)
 	}
@@ -80,8 +80,8 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 	}
 
 	result := map[string]any{
-		"results":  repos,
-		"has_more": false,
+		keyResults: repos,
+		keyHasMore: false,
 	}
 
 	return marshalResult(result)
@@ -90,14 +90,14 @@ func (t *Tools) listRepositories(ctx context.Context, req mcp.CallToolRequest) (
 func (t *Tools) getRepository(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	repoID := req.GetString("repository_id", "")
 	owner := req.GetString("owner", "")
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
-	provider := req.GetString("provider", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
+	provider := req.GetString(paramProvider, "")
 
 	// Validate parameters
 	if errMsg := ValidateRepositoryLookupParams(repoID, owner, name, map[string]string{
-		"project_id": projectID,
-		"provider":   provider,
+		paramProjectID: projectID,
+		paramProvider:  provider,
 	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}

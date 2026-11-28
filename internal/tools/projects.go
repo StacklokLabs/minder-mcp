@@ -18,7 +18,7 @@ func (t *Tools) listProjects(ctx context.Context, req mcp.CallToolRequest) (*mcp
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
+	projectID := req.GetString(paramProjectID, "")
 
 	var projects any
 	if projectID != "" {

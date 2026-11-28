@@ -18,8 +18,8 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
-	provider := req.GetString("provider", "")
+	projectID := req.GetString(paramProjectID, "")
+	provider := req.GetString(paramProvider, "")
 
 	// Use multi-project aggregation when no project_id specified
 	artifacts, err := forEachProject(ctx, client, projectID, func(ctx context.Context, projID string) ([]*minderv1.Artifact, error) {
@@ -46,14 +46,14 @@ func (t *Tools) listArtifacts(ctx context.Context, req mcp.CallToolRequest) (*mc
 
 func (t *Tools) getArtifact(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	artifactID := req.GetString("artifact_id", "")
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
-	provider := req.GetString("provider", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
+	provider := req.GetString(paramProvider, "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", "name", map[string]string{
-		"project_id": projectID,
-		"provider":   provider,
+	if errMsg := ValidateLookupParams(artifactID, name, "artifact_id", paramName, map[string]string{
+		paramProjectID: projectID,
+		paramProvider:  provider,
 	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}

@@ -18,7 +18,7 @@ func (t *Tools) listRuleTypes(ctx context.Context, req mcp.CallToolRequest) (*mc
 		return errResult, nil
 	}
 
-	projectID := req.GetString("project_id", "")
+	projectID := req.GetString(paramProjectID, "")
 
 	// Use multi-project aggregation when no project_id specified
 	ruleTypes, err := forEachProject(ctx, client, projectID, func(ctx context.Context, projID string) ([]*minderv1.RuleType, error) {
@@ -41,12 +41,12 @@ func (t *Tools) listRuleTypes(ctx context.Context, req mcp.CallToolRequest) (*mc
 
 func (t *Tools) getRuleType(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	ruleTypeID := req.GetString("rule_type_id", "")
-	name := req.GetString("name", "")
-	projectID := req.GetString("project_id", "")
+	name := req.GetString(paramName, "")
+	projectID := req.GetString(paramProjectID, "")
 
 	// Validate parameters
-	if errMsg := ValidateLookupParams(ruleTypeID, name, "rule_type_id", "name", map[string]string{
-		"project_id": projectID,
+	if errMsg := ValidateLookupParams(ruleTypeID, name, "rule_type_id", paramName, map[string]string{
+		paramProjectID: projectID,
 	}); errMsg != "" {
 		return mcp.NewToolResultError(errMsg), nil
 	}
