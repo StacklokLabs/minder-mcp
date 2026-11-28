@@ -8,7 +8,16 @@
     "enabled": true,
     "schedule": ["before 5am on monday"]
   },
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
   "packageRules": [
+    {
+      "description": "Group routine GitHub Actions updates",
+      "groupName": "github actions",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"]
+    },
     {
       "groupName": "eslint monorepo",
       "matchPackageNames": ["eslint", "typescript-eslint"],
